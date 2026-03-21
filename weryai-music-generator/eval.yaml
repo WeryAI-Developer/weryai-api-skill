@@ -1,0 +1,49 @@
+version: "1"
+defaults:
+  trials: 5
+  timeout: 300
+  threshold: 0.8
+
+skill: weryai-music-generator
+trigger_tests:
+  - id: explicit-vocal-song
+    should_trigger: true
+    prompt: "Use the weryai-music-generator skill to submit a vocal song generation task with custom lyrics."
+  - id: explicit-instrumental
+    should_trigger: true
+    prompt: "Use WeryAI to generate instrumental music only and preview the request payload before spending credits."
+  - id: structured-option-inputs
+    should_trigger: true
+    prompt: "Generate a WeryAI vocal song with pop genre, warm emotion, piano instrumentation, and female timbre."
+  - id: implicit-music-status
+    should_trigger: true
+    prompt: "Check my WeryAI music task status and tell me whether the audio, lyrics, and cover are ready."
+  - id: implicit-reference-audio
+    should_trigger: true
+    prompt: "Generate a song from this style brief and reference audio URL, then wait for the final music result."
+  - id: negative-non-music
+    should_trigger: false
+    prompt: "Write a blog post about songwriting trends without calling any music generation API."
+
+outcome_tests:
+  - id: package-structure
+    type: deterministic
+    checks:
+      - file_exists: "SKILL.md"
+      - file_exists: "scripts/submit-music.js"
+      - file_exists: "scripts/status-music.js"
+      - file_exists: "scripts/wait-music.js"
+      - file_exists: "scripts/balance-music.js"
+      - file_exists: "scripts/lib/cli.js"
+      - file_exists: "scripts/lib/submit.js"
+      - file_exists: "scripts/lib/status.js"
+      - file_exists: "scripts/lib/wait.js"
+      - file_exists: "references/api-music.md"
+      - file_exists: "references/error-codes.md"
+  - id: skill-doc-quality
+    type: llm_rubric
+    rubric: |
+      Trigger coverage (0-0.25): Does the skill clearly cover songs, instrumentals, lyrics, reference audio, balance checks, and task polling?
+      Workflow clarity (0-0.25): Can a user understand when to use submit, wait, status, and balance, including the default vocal-song behavior?
+      Constraint honesty (0-0.25): Does the skill clearly state cost, idempotency, and non-goals?
+      API fidelity (0-0.25): Are the documented fields and mode-specific rules faithful to the WeryAI music API without inventing unsupported model discovery, while correctly documenting genre, emotion, instrument, and timbre normalization?
