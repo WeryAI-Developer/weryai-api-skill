@@ -23,6 +23,39 @@ Generate WeryAI videos with the official base skill for text-to-video, image-to-
 - Default parameters: `duration=5`, `resolution=720p`, `aspect_ratio=9:16`, `generate_audio=false`
 - Main trust signals: dry-run support, model capability lookup, paid-run warning, HTTPS image validation
 
+## Authentication and first-time setup
+
+Before the first real generation run:
+
+1. Create a WeryAI account.
+2. Open the API key page at `https://www.weryai.com/api/keys`.
+3. Create a new API key and copy the secret value.
+4. Add it to the required environment variable `WERYAI_API_KEY`.
+5. Make sure the WeryAI account has available balance or credits before paid generation.
+
+### OpenClaw-friendly setup
+
+- This skill already declares `WERYAI_API_KEY` in `metadata.openclaw.requires.env` and `primaryEnv`.
+- After installation, if the installer or runtime asks for required environment variables, paste the key into `WERYAI_API_KEY`.
+- If you are configuring the runtime manually, export it before running commands:
+
+```sh
+export WERYAI_API_KEY="your_api_key_here"
+```
+
+### Quick verification
+
+Use one safe check before the first paid run:
+
+```sh
+node {baseDir}/scripts/models-video.js --mode text_to_video
+node {baseDir}/scripts/wait-video.js --json '{"prompt":"A glowing koi swims through ink clouds","duration":5}' --dry-run
+```
+
+- `models-video.js` confirms that the key is configured and the models endpoint is reachable.
+- `--dry-run` confirms the request shape locally without spending credits.
+- Real `wait` or `submit-*` commands still require available WeryAI balance.
+
 ## Prerequisites
 
 - `WERYAI_API_KEY` must be set before paid runs.
