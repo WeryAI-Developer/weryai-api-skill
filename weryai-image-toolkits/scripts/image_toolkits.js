@@ -32,15 +32,209 @@ const STATUS_MAP = {
 };
 
 const ERROR_MESSAGES = {
-  400: "Bad request. Check your request parameters.",
-  403: "Invalid API key or IP access denied. Verify WERYAI_API_KEY.",
-  500: "WeryAI server error. Please try again later.",
-  1001: "Parameter error. Check the required fields and enum values.",
-  1002: "Authentication failed. Verify WERYAI_API_KEY.",
-  1003: "Task or resource not found.",
-  1011: "Insufficient credits. Recharge at weryai.com.",
-  6004: "Generation failed. Please try again later.",
+  400: "Some of the request details are invalid. Please review your input and try again.",
+  403: "Authentication failed. Please check your API key and try again.",
+  429: "Too many requests in a short time. Please wait a moment and try again.",
+  500: "Something went wrong on our side. Please try again in a moment.",
 };
+
+const STATIC_ERROR_MAP = {
+  1001: {
+    category: "rate_limit",
+    title: "Too many requests",
+    message: "Too many requests in a short time. Please wait a moment and try again.",
+    retryable: true,
+  },
+  1003: {
+    category: "not_found",
+    title: "Resource not found",
+    message: "The requested item could not be found. Please check the ID or input and try again.",
+    retryable: false,
+  },
+  1010: {
+    category: "not_found",
+    title: "Resource not found",
+    message: "The requested item could not be found. Please check the ID or input and try again.",
+    retryable: false,
+  },
+  1011: {
+    category: "credits",
+    title: "Not enough credits",
+    message: "You do not have enough credits to complete this request.",
+    retryable: false,
+  },
+  1014: {
+    category: "upload",
+    title: "Upload limit reached",
+    message: "You have reached an upload limit. Please wait and try again later.",
+    retryable: true,
+  },
+  1015: {
+    category: "upload",
+    title: "Upload limit reached",
+    message: "You have reached an upload limit. Please wait and try again later.",
+    retryable: true,
+  },
+  1102: {
+    category: "upload",
+    title: "Upload failed",
+    message: "We could not upload the file right now. Please try again.",
+    retryable: true,
+  },
+  2001: {
+    category: "content_safety",
+    title: "Input image flagged",
+    message: "The provided image was flagged by the safety system. Please use a different image and try again.",
+    retryable: false,
+  },
+  2003: {
+    category: "content_safety",
+    title: "Content flagged",
+    message: "The provided prompt or image was flagged by the safety system. Please revise it and try again.",
+    retryable: false,
+  },
+  2004: {
+    category: "validation",
+    title: "Unsupported image format",
+    message: "The image format is not supported. Please use JPG, JPEG, PNG, or WEBP.",
+    retryable: false,
+  },
+  6001: {
+    category: "server",
+    title: "Temporary service issue",
+    message: "Something went wrong on our side. Please try again in a moment.",
+    retryable: true,
+  },
+  6002: {
+    category: "rate_limit",
+    title: "Too many requests",
+    message: "Too many requests in a short time. Please wait a moment and try again.",
+    retryable: true,
+  },
+  6003: {
+    category: "server",
+    title: "Temporary service issue",
+    message: "Something went wrong on our side. Please try again in a moment.",
+    retryable: true,
+  },
+  6004: {
+    category: "server",
+    title: "Generation failed",
+    message: "The request could not be completed. Please try again with different input or try again later.",
+    retryable: true,
+  },
+  6010: {
+    category: "active_job_limit",
+    title: "Too many active jobs",
+    message: "You already have too many active jobs. Please wait for current jobs to finish before starting a new one.",
+    retryable: true,
+  },
+  6101: {
+    category: "daily_limit",
+    title: "Daily limit reached",
+    message: "You have reached the daily limit for this workflow. Please try again later.",
+    retryable: true,
+  },
+};
+
+const VALIDATION_PATTERNS = [
+  {
+    pattern: /\bprompt and bg_color cannot both be empty\b/i,
+    field: "prompt|bg_color",
+    title: "Missing background settings",
+    message: "Please provide either a background prompt or a background color.",
+  },
+  {
+    pattern: /\bimage url cannot be empty\b/i,
+    field: "img_url",
+    title: "Missing image URL",
+    message: "Please provide a valid image URL.",
+  },
+  {
+    pattern: /\bimage url error\b/i,
+    field: "img_url",
+    title: "Invalid image URL",
+    message: "The provided image URL is not valid. Please check it and try again.",
+  },
+  {
+    pattern: /\bimage cannot be empty\b/i,
+    field: "img_url",
+    title: "Missing image",
+    message: "Please provide an image for this request.",
+  },
+  {
+    pattern: /\bimages cannot be empty\b/i,
+    field: "images",
+    title: "Missing images",
+    message: "Please provide at least one image for this request.",
+  },
+  {
+    pattern: /\bface.*cannot be empty\b|\bface_img_url cannot be empty\b/i,
+    field: "face_img_url",
+    title: "Missing face image",
+    message: "Please provide a valid face reference image URL.",
+  },
+  {
+    pattern: /\bonly support jpg|jpeg|png|webp image type\b/i,
+    field: "img_url",
+    title: "Unsupported image format",
+    message: "The image format is not supported. Please use JPG, JPEG, PNG, or WEBP.",
+  },
+  {
+    pattern: /\baspect ratio cannot be empty\b/i,
+    field: "aspect_ratio",
+    title: "Missing aspect ratio",
+    message: "Please provide an aspect ratio for this request.",
+  },
+  {
+    pattern: /\baspect ratio .* is not supported\b/i,
+    field: "aspect_ratio",
+    title: "Unsupported aspect ratio",
+    message: "The selected aspect ratio is not supported for this request.",
+  },
+  {
+    pattern: /\btarget language cannot be empty\b|\blanguage cannot be empty\b/i,
+    field: "target_lang",
+    title: "Missing target language",
+    message: "Please provide a target language for this request.",
+  },
+  {
+    pattern: /\btype .* is not supported\b/i,
+    field: "type",
+    title: "Unsupported type",
+    message: "The selected type is not supported for this request.",
+  },
+  {
+    pattern: /\btask id cannot be empty\b/i,
+    field: "task_id",
+    title: "Missing task ID",
+    message: "Please provide a task ID.",
+  },
+  {
+    pattern: /\btask id error\b/i,
+    field: "task_id",
+    title: "Invalid task ID",
+    message: "The task ID is invalid. Please check it and try again.",
+  },
+  {
+    pattern: /\btask not exist\b/i,
+    field: "task_id",
+    title: "Task not found",
+    message: "The requested task could not be found. Please check the task ID and try again.",
+  },
+  {
+    pattern: /\bbatch not exist\b|\bno tasks found\b/i,
+    field: "batch_id",
+    title: "Batch not found",
+    message: "The requested batch could not be found. Please check the batch ID and try again.",
+  },
+  {
+    pattern: /敏感内容|sensitive content|content flagged|safety/i,
+    field: "content",
+    title: "Content flagged",
+    message: "The provided image or request content was flagged by the safety system. Please revise it and try again.",
+  },
+];
 
 const ASPECT_RATIOS = ["16:9", "9:16", "1:1", "4:3", "3:4", "21:9", "9:21"];
 const TRANSLATE_TYPES = ["text", "image"];
@@ -295,28 +489,100 @@ function isApiSuccess(res) {
   return httpOk && bodyOk;
 }
 
-function formatApiError(res) {
-  const httpStatus = res.httpStatus || 0;
-  const code = res.status;
-  const msg = res.msg || res.message || "";
-
-  if (httpStatus === 403) {
-    return { ok: false, phase: "failed", errorCode: "403", errorMessage: `${ERROR_MESSAGES[403]}${msg ? ` (${msg})` : ""}` };
-  }
-  if (httpStatus >= 500) {
-    return { ok: false, phase: "failed", errorCode: "500", errorMessage: `${ERROR_MESSAGES[500]}${msg ? ` (${msg})` : ""}` };
-  }
-  if (httpStatus === 400) {
-    return { ok: false, phase: "failed", errorCode: "400", errorMessage: `${ERROR_MESSAGES[400]}${msg ? ` (${msg})` : ""}` };
-  }
-
-  const friendly = ERROR_MESSAGES[code] || "";
+function createFailure(errorCode, title, message, extra = {}) {
   return {
     ok: false,
     phase: "failed",
-    errorCode: code != null ? String(code) : null,
-    errorMessage: friendly && msg ? `${friendly} (${msg})` : friendly || msg || `API error (status ${code}, HTTP ${httpStatus})`,
+    errorCode: errorCode != null ? String(errorCode) : null,
+    errorTitle: title,
+    errorMessage: message,
+    ...extra,
   };
+}
+
+function pickRawMessage(res) {
+  return String(res.msg || res.message || res.desc || "").trim();
+}
+
+function parseValidationError(res) {
+  const rawText = pickRawMessage(res);
+
+  for (const rule of VALIDATION_PATTERNS) {
+    if (rule.pattern.test(rawText)) {
+      return createFailure("1002", rule.title, rule.message, {
+        errorCategory: "validation",
+        retryable: false,
+        field: rule.field,
+      });
+    }
+  }
+
+  if (/missing|cannot be empty|required/i.test(rawText)) {
+    return createFailure("1002", "Missing required input", "Some required information is missing. Please review your input and try again.", {
+      errorCategory: "validation",
+      retryable: false,
+    });
+  }
+
+  if (/invalid|unsupported|error/i.test(rawText)) {
+    return createFailure("1002", "Invalid request parameters", "One or more request settings are invalid or not supported. Please review your input and try again.", {
+      errorCategory: "validation",
+      retryable: false,
+    });
+  }
+
+  return createFailure("1002", "Invalid request", "Some of the request details are missing or not supported. Please review your input and try again.", {
+    errorCategory: "validation",
+    retryable: false,
+  });
+}
+
+function formatApiError(res) {
+  const httpStatus = res.httpStatus || 0;
+  const code = res.status;
+  const msg = pickRawMessage(res);
+
+  if (httpStatus === 403) {
+    return createFailure("403", "Authentication failed", ERROR_MESSAGES[403], {
+      errorCategory: "auth",
+      retryable: false,
+    });
+  }
+  if (httpStatus === 429) {
+    return createFailure("429", "Too many requests", ERROR_MESSAGES[429], {
+      errorCategory: "rate_limit",
+      retryable: true,
+    });
+  }
+  if (httpStatus >= 500) {
+    return createFailure("500", "Temporary service issue", ERROR_MESSAGES[500], {
+      errorCategory: "server",
+      retryable: true,
+    });
+  }
+  if (httpStatus === 400) {
+    return createFailure("400", "Invalid request", ERROR_MESSAGES[400], {
+      errorCategory: "validation",
+      retryable: false,
+    });
+  }
+
+  if (String(code) === "1002") {
+    return parseValidationError(res);
+  }
+
+  const mapped = STATIC_ERROR_MAP[code];
+  if (mapped) {
+    return createFailure(code, mapped.title, mapped.message, {
+      errorCategory: mapped.category,
+      retryable: mapped.retryable,
+    });
+  }
+
+  return createFailure(code, "Request failed", msg || "We could not complete your request right now. Please try again later.", {
+    errorCategory: "server",
+    retryable: true,
+  });
 }
 
 function extractImages(taskData) {
@@ -380,8 +646,11 @@ async function statusTask(taskId, apiKey) {
     taskId,
     taskStatus: rawStatus,
     images: extractImages(taskData),
+      errorTitle: normalized === "failed" ? "Task failed" : null,
     errorCode: normalized === "failed" ? "TASK_FAILED" : null,
-    errorMessage: normalized === "failed" ? result.message || taskData.msg || "Task failed." : null,
+      errorCategory: normalized === "failed" ? "task" : null,
+      retryable: normalized === "failed" ? false : null,
+      errorMessage: normalized === "failed" ? pickRawMessage(result) || pickRawMessage(taskData) || "The task could not be completed. Please review the request and try again." : null,
   };
 }
 
@@ -399,7 +668,10 @@ async function waitForTask(taskId, apiKey) {
     taskId,
     taskStatus: "unknown",
     images: null,
+    errorTitle: "Request timed out",
     errorCode: "TIMEOUT",
+    errorCategory: "timeout",
+    retryable: true,
     errorMessage: `Poll timeout after ${Math.floor(POLL_TIMEOUT_MS / 1000)}s.`,
   };
 }
@@ -459,7 +731,10 @@ async function main() {
       print({
         ok: false,
         phase: "failed",
+        errorTitle: "Missing API key",
         errorCode: "NO_API_KEY",
+        errorCategory: "auth",
+        retryable: false,
         errorMessage: "Missing WERYAI_API_KEY environment variable. Get one from https://www.weryai.com/api/keys and configure it only in the runtime environment before using this skill.",
       });
       process.exitCode = 1;
@@ -487,7 +762,10 @@ async function main() {
       ok: false,
       phase: "failed",
       tool: toolId,
+      errorTitle: "Invalid request",
       errorCode: "VALIDATION",
+      errorCategory: "validation",
+      retryable: false,
       errorMessage: validationErrors.join(" "),
       required: TOOLS[toolId].required,
       defaults: TOOLS[toolId].defaults,
@@ -516,7 +794,10 @@ async function main() {
     print({
       ok: false,
       phase: "failed",
+      errorTitle: "Missing API key",
       errorCode: "NO_API_KEY",
+      errorCategory: "auth",
+      retryable: false,
       errorMessage: "Missing WERYAI_API_KEY environment variable. Get one from https://www.weryai.com/api/keys and configure it only in the runtime environment before using this skill.",
     });
     process.exitCode = 1;

@@ -9,6 +9,11 @@ export async function pollSubmittedTasks(client, options) {
       ok: false,
       phase: 'failed',
       errorCode: 'PROTOCOL',
+      errorCategory: 'server',
+      errorTitle: 'Unexpected API response',
+      retryable: false,
+      field: 'task_ids',
+      hint: 'The API reported success but did not return task IDs. Inspect the raw response before retrying.',
       errorMessage: 'API returned success but no task_ids.',
     };
   }
@@ -36,6 +41,11 @@ export async function pollSingleTask(client, options) {
         taskStatus: 'unknown',
         [outputKey]: null,
         errorCode: 'TIMEOUT',
+        errorCategory: 'timeout',
+        errorTitle: 'Polling timed out',
+        retryable: true,
+        field: null,
+        hint: 'The task may still be running. Use the status command to inspect the existing task before submitting a new one.',
         errorMessage: `Poll timeout after ${Math.round(elapsed / 1000)}s.`,
       };
     }
@@ -74,6 +84,15 @@ export async function pollSingleTask(client, options) {
         coverUrl: task.coverUrl,
         balance: null,
         errorCode: phase === 'failed' || missingOutputs ? 'TASK_FAILED' : null,
+        errorCategory: phase === 'failed' || missingOutputs ? 'task' : null,
+        errorTitle: phase === 'failed'
+          ? 'Task failed'
+          : missingOutputs
+            ? `Missing ${outputLabel} output`
+            : null,
+        retryable: phase === 'failed' || missingOutputs ? false : null,
+        field: null,
+        hint: phase === 'failed' || missingOutputs ? 'Check the existing task state and parameters before retrying.' : null,
         errorMessage: missingOutputs
           ? `Task reached a completed state but returned no ${outputLabel} URLs.`
           : phase === 'failed'
@@ -98,6 +117,11 @@ export async function pollMultipleTasks(client, options) {
         taskIds,
         tasks: null,
         errorCode: 'TIMEOUT',
+        errorCategory: 'timeout',
+        errorTitle: 'Polling timed out',
+        retryable: true,
+        field: null,
+        hint: 'The tasks may still be running. Inspect the existing task IDs before submitting a new batch.',
         errorMessage: `Poll timeout after ${Math.round(elapsed / 1000)}s.`,
       };
     }
@@ -143,6 +167,11 @@ export async function pollMultipleTasks(client, options) {
         taskIds,
         tasks,
         errorCode: phase === 'failed' ? 'TASK_FAILED' : null,
+        errorCategory: phase === 'failed' ? 'task' : null,
+        errorTitle: phase === 'failed' ? 'Batch failed' : null,
+        retryable: phase === 'failed' ? false : null,
+        field: null,
+        hint: phase === 'failed' ? `Inspect the existing batch and task statuses before retrying.` : null,
         errorMessage: phase === 'failed'
           ? `One or more tasks failed or returned no ${outputLabel} URLs.`
           : null,
@@ -165,6 +194,11 @@ export async function pollBatch(client, options) {
         taskIds,
         tasks: null,
         errorCode: 'TIMEOUT',
+        errorCategory: 'timeout',
+        errorTitle: 'Polling timed out',
+        retryable: true,
+        field: null,
+        hint: 'The batch may still be running. Inspect the existing batch before submitting a new one.',
         errorMessage: `Poll timeout after ${Math.round(elapsed / 1000)}s.`,
       };
     }
@@ -198,6 +232,11 @@ export async function pollBatch(client, options) {
         taskIds,
         tasks,
         errorCode: phase === 'failed' ? 'TASK_FAILED' : null,
+        errorCategory: phase === 'failed' ? 'task' : null,
+        errorTitle: phase === 'failed' ? 'Batch failed' : null,
+        retryable: phase === 'failed' ? false : null,
+        field: null,
+        hint: phase === 'failed' ? `Inspect the existing batch and task statuses before retrying.` : null,
         errorMessage: phase === 'failed'
           ? `One or more tasks in the batch failed or returned no ${outputLabel} URLs.`
           : null,
