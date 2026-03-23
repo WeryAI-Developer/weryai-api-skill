@@ -1,27 +1,28 @@
 # WeryAI Video Generation Models
 
 Model capabilities are now fetched dynamically from the WeryAI API.
+Display names in this file follow the shared `core/weryai-core/model-display.js` normalization, while `model_key` remains the request parameter.
 
 ## Querying Models
 
 Run the `models` command to see all available video models and their capabilities:
 
 ```sh
-node {baseDir}/scripts/models-video.js
-node {baseDir}/scripts/models-video.js --mode text_to_video
-node {baseDir}/scripts/models-video.js --mode image_to_video
-node {baseDir}/scripts/models-video.js --mode multi_image_to_video
+node scripts/models-video.js
+node scripts/models-video.js --mode text_to_video
+node scripts/models-video.js --mode image_to_video
+node scripts/models-video.js --mode multi_image_to_video
 ```
 
 The output includes per-model metadata: supported aspect ratios, durations, resolutions, prompt length limits, upload image limits, and feature flags such as `generate_audio`, `negative_prompt`, and `support_multiple_images`.
 
 ## Default Configuration
 
-- Default model: `SEEDANCE_2_0`
+- Default model: **Seedance 2.0** (`SEEDANCE_2_0`)
 - Default aspect_ratio: `9:16`
 - Default duration: first allowed value from model metadata (typically 5s)
 - Default resolution: `720p`
-- `generate_audio` defaults to `false`
+- `generate_audio` defaults to `true` on audio-capable models
 
 ## Notes
 

@@ -3,13 +3,16 @@ import { formatApiError, formatNetworkError, isApiSuccess } from '../weryai-core
 import { buildBody, fetchModelRegistry, lookupModel, validateWithModel } from './model-registry.js';
 import { DEFAULT_MODEL, FALLBACK_DEFAULTS } from './models.js';
 import { normalizeImageInput } from './normalize-input.js';
+import { collectLocalUploadPreview, resolveImageUploadSources, validateLocalImageSources } from './upload.js';
 import { validateSubmitImage } from './validators.js';
 
 export async function execute(input, ctx) {
   const normalizedInput = normalizeImageInput(input);
   const structErrors = validateSubmitImage(normalizedInput);
-  if (structErrors.length > 0) {
-    return { ok: false, phase: 'failed', errorCode: 'VALIDATION', errorMessage: structErrors.join(' ') };
+  const localErrors = await validateLocalImageSources(normalizedInput.images);
+  const allErrors = [...structErrors, ...localErrors];
+  if (allErrors.length > 0) {
+    return { ok: false, phase: 'failed', errorCode: 'VALIDATION', errorMessage: allErrors.join(' ') };
   }
 
   const registry = await fetchModelRegistry(ctx);
@@ -27,6 +30,7 @@ export async function execute(input, ctx) {
   }
 
   const body = meta ? buildBody(meta, normalizedInput, 'image_to_image') : buildFallbackBody(normalizedInput, model);
+  const uploadPreview = collectLocalUploadPreview(body);
 
   if (ctx.dryRun) {
     return {
@@ -35,13 +39,27 @@ export async function execute(input, ctx) {
       dryRun: true,
       requestBody: body,
       requestUrl: `${ctx.baseUrl}/v1/generation/image-to-image`,
+      uploadPreview,
+      notes: 'dry-run does not upload local files. Local sources in uploadPreview will be uploaded in a real run via /v1/generation/upload-file.',
+    };
+  }
+
+  let resolvedBody;
+  try {
+    resolvedBody = await resolveImageUploadSources(ctx, body);
+  } catch (err) {
+    return {
+      ok: false,
+      phase: 'failed',
+      errorCode: 'UPLOAD_FAILED',
+      errorMessage: err?.message ?? String(err),
     };
   }
 
   const client = createClient(ctx);
   let res;
   try {
-    res = await client.post('/v1/generation/image-to-image', body);
+    res = await client.post('/v1/generation/image-to-image', resolvedBody);
   } catch (err) {
     return formatNetworkError(err);
   }

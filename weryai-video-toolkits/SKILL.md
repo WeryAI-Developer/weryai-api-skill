@@ -1,16 +1,20 @@
 ---
 name: weryai-video-toolkits
-description: Edit videos with WeryAI video tools for subtitle translate, subtitle erase, watermark remove, face change, lip sync, background remove, video extend, anime replace, magic style transfer, and video upscale. Use when the user wants WeryAI video editing or video post-processing for an existing video instead of text-to-video generation.
+description: Use when you need WeryAI video tools for video editing and video post-processing on existing videos: subtitle translate, subtitle erase, watermark remove, face change, lip sync, background remove, extend, anime replace, magic style transfer, or video upscale.
 metadata: { "openclaw": { "emoji": "🎞️", "primaryEnv": "WERYAI_API_KEY", "paid": true, "network_required": true, "requires": { "env": ["WERYAI_API_KEY"], "bins": ["node"], "node": ">=18" } } }
 ---
 
 # WeryAI Video Toolkits
 
-Use this skill for official WeryAI video editing, video post-processing, and WeryAI video tools on an existing video URL. It covers subtitle translate, subtitle erase, watermark remove, face change, lip sync, background remove, video extend, anime replace, magic style transfer, and video upscale. This skill is intentionally strict about secret declaration and input safety: the only runtime secret is `WERYAI_API_KEY`, and all media inputs must be public `https` URLs rather than ad-hoc local uploads.
+WeryAI video tools, video editing, video post-processing, subtitle translate, subtitle erase, watermark remove, face change, lip sync, background remove, video extend, anime replace, magic style transfer, video upscale.
+
+WeryAI video tools for video editing and video post-processing on existing videos.
+
+Use this skill for official WeryAI video editing, video post-processing, and WeryAI video tools on existing video/media sources. Use when you need WeryAI video tools for subtitle translate, subtitle erase, watermark remove, face change, lip sync, background remove, video extend, anime replace, magic style transfer, or video upscale. This skill is intentionally strict about secret declaration and input safety: the only runtime secret is `WERYAI_API_KEY`, and media inputs support `http/https` URLs plus local/file sources that are uploaded first.
 
 This is not a text-to-video generator. Use it when the user wants to edit, transform, clean up, translate, upscale, or extend an existing video with WeryAI rather than create a brand-new video from a prompt.
 
-**Dependencies:** `scripts/video_toolkits.js` in this directory, `WERYAI_API_KEY`, and Node.js 18+. No other skills are required.
+**Dependencies:** `scripts/video_toolkits.js` at the skill package root (alongside `SKILL.md`), `WERYAI_API_KEY`, and Node.js 18+. No other skills are required.
 
 ## Example Prompts
 
@@ -51,8 +55,8 @@ export WERYAI_API_KEY="your_api_key_here"
 Use one safe check before the first paid run:
 
 ```sh
-node {baseDir}/scripts/video_toolkits.js tools
-node {baseDir}/scripts/video_toolkits.js wait --tool background-remove --json '{"video_url":"https://example.com/video.mp4"}' --dry-run
+node scripts/video_toolkits.js tools
+node scripts/video_toolkits.js wait --tool background-remove --json '{"video_url":"https://example.com/video.mp4"}' --dry-run
 ```
 
 - `tools` confirms the local CLI is available and shows the supported tool registry.
@@ -62,7 +66,7 @@ node {baseDir}/scripts/video_toolkits.js wait --tool background-remove --json '{
 
 - `WERYAI_API_KEY` must be set before running `video_toolkits.js` for paid calls.
 - Node.js `>=18` is required because the runtime uses built-in `fetch`.
-- `video_url`, `image_url`, and `audio_url` must be public `https` URLs.
+- `video_url`, `image_url`, and `audio_url` can be `http/https` URLs or local/file sources. Local/non-http(s) sources are uploaded first.
 - Real `submit`, `wait`, and `status` commands can consume WeryAI credits or depend on existing paid tasks.
 
 ## Security and API hosts
@@ -124,36 +128,36 @@ Read [references/video-tools-matrix.md](references/video-tools-matrix.md) when y
 
 ```sh
 # List supported tools and defaults
-node {baseDir}/scripts/video_toolkits.js tools
+node scripts/video_toolkits.js tools
 
 # Remove background with default BLACK fill
-node {baseDir}/scripts/video_toolkits.js wait \
+node scripts/video_toolkits.js wait \
   --tool background-remove \
   --json '{"video_url":"https://example.com/video.mp4"}'
 
 # Replace or move an object in anime style
-node {baseDir}/scripts/video_toolkits.js wait \
+node scripts/video_toolkits.js wait \
   --tool anime-replace \
   --json '{"video_url":"https://example.com/video.mp4","image_url":"https://example.com/ref.jpg","type":"replace","resolution":"720p"}'
 
 # Extend a clip
-node {baseDir}/scripts/video_toolkits.js wait \
+node scripts/video_toolkits.js wait \
   --tool extend \
   --json '{"video_url":"https://example.com/video.mp4","prompt":"Continue the motion naturally for 5 seconds","style":"anime","duration":5,"resolution":"720p"}'
 
 # Translate subtitles
-node {baseDir}/scripts/video_toolkits.js wait \
+node scripts/video_toolkits.js wait \
   --tool subtitle-translate \
   --json '{"video_url":"https://example.com/video.mp4","target_language":"en"}'
 
 # Dry-run preview without spending credits
-node {baseDir}/scripts/video_toolkits.js wait \
+node scripts/video_toolkits.js wait \
   --tool upscaler \
   --json '{"video_url":"https://example.com/video.mp4","resolution":"1080p"}' \
   --dry-run
 
 # Poll an existing task
-node {baseDir}/scripts/video_toolkits.js status --task-id <task-id>
+node scripts/video_toolkits.js status --task-id <task-id>
 ```
 
 ## Workflow
@@ -170,7 +174,7 @@ node {baseDir}/scripts/video_toolkits.js status --task-id <task-id>
 
 ## Input Rules
 
-- `video_url`, `image_url`, and `audio_url` must be public `https` URLs.
+- `video_url`, `image_url`, and `audio_url` can be `http/https` URLs or local/file sources.
 - Do not invent undocumented fields.
 - Use normalized `rect_vo_list` coordinates between `0` and `1`.
 - For subtitle or watermark removal, omit `rect_vo_list` when auto-detection is acceptable.
@@ -199,7 +203,7 @@ The task is done when:
 
 - Do not treat this skill as a text-to-video generator.
 - Do not ask the user to choose raw API fields when a safe default already fits the request.
-- Do not use local file paths for `video_url`, `image_url`, or `audio_url`.
+- Do not use unsupported file types for `video_url`, `image_url`, or `audio_url`; local sources are uploaded before the toolkit request.
 - Do not re-run paid processing casually because each `submit` or `wait` call can create a new paid task.
 - Do not broaden this skill beyond the documented WeryAI video-tools API surface.
 
@@ -212,4 +216,4 @@ The task is done when:
 
 - Video tools parameter matrix: [references/video-tools-matrix.md](references/video-tools-matrix.md)
 - Official documentation index: [WeryAI llms.txt](https://docs.weryai.com/llms.txt)
-- Anime replace API: [Submit Video Anime Replace Task](https://docs.weryai.com/api-reference/video-tools/submit-video-anime-replace-task)
+- Anime replace API: [Submit Video Anime Replace Task](https://docs.weryai.com/api-references/video-tools/submit-video-anime-replace-task)

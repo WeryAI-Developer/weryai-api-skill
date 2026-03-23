@@ -12,11 +12,11 @@ export function validateSubmitImage(input) {
   const errors = validateSubmitText(input);
 
   if (!input.images || !Array.isArray(input.images) || input.images.length === 0) {
-    errors.push('images is required for image-to-image and must be a non-empty array of URLs.');
+    errors.push('images is required for image-to-image and must be a non-empty array of image sources.');
   } else {
-    for (const url of input.images) {
-      if (typeof url !== 'string' || !url.startsWith('https://')) {
-        errors.push(`Invalid image URL: "${url}". Only https:// URLs are supported.`);
+    for (const source of input.images) {
+      if (typeof source !== 'string' || source.trim().length === 0) {
+        errors.push(`Invalid image source: "${source}".`);
       }
     }
   }

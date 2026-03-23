@@ -2,6 +2,29 @@ import { log, sleep } from './client.js';
 import { hasTaskOutput, normalizeBatchPhase, normalizeTaskCollection, normalizeTaskResult, toPhase } from './normalize.js';
 import { isApiSuccess } from './errors.js';
 
+export function resolvePollIntervalMs(ctx, elapsedMs, options = {}) {
+  const configured = Number(ctx?.pollIntervalMs);
+  if (Number.isFinite(configured) && configured >= 0) {
+    return configured;
+  }
+
+  const profile = options.pollProfile || ctx?.pollProfile || 'standard';
+  if (profile === 'fast') {
+    if (elapsedMs < 30_000) return 2_000;
+    if (elapsedMs < 120_000) return 4_000;
+    return 6_000;
+  }
+  if (profile === 'slow') {
+    if (elapsedMs < 30_000) return 6_000;
+    if (elapsedMs < 120_000) return 10_000;
+    return 15_000;
+  }
+
+  if (elapsedMs < 30_000) return 3_000;
+  if (elapsedMs < 120_000) return 6_000;
+  return 10_000;
+}
+
 export async function pollSubmittedTasks(client, options) {
   const { batchId, taskIds, allowBatch = false } = options;
   if (!Array.isArray(taskIds) || taskIds.length === 0) {
@@ -26,7 +49,7 @@ export async function pollSubmittedTasks(client, options) {
 }
 
 export async function pollSingleTask(client, options) {
-  const { taskId, batchId = null, taskIds = taskId ? [taskId] : [], ctx, outputKey, outputLabel } = options;
+  const { taskId, batchId = null, taskIds = taskId ? [taskId] : [], ctx, outputKey, outputLabel, pollProfile } = options;
   const start = Date.now();
 
   while (true) {
@@ -50,7 +73,7 @@ export async function pollSingleTask(client, options) {
       };
     }
 
-    await sleep(ctx.pollIntervalMs);
+    await sleep(resolvePollIntervalMs(ctx, elapsed, { pollProfile }));
 
     let res;
     try {
@@ -104,7 +127,7 @@ export async function pollSingleTask(client, options) {
 }
 
 export async function pollMultipleTasks(client, options) {
-  const { taskIds, ctx, outputKey, outputLabel } = options;
+  const { taskIds, ctx, outputKey, outputLabel, pollProfile } = options;
   const start = Date.now();
 
   while (true) {
@@ -126,7 +149,7 @@ export async function pollMultipleTasks(client, options) {
       };
     }
 
-    await sleep(ctx.pollIntervalMs);
+    await sleep(resolvePollIntervalMs(ctx, elapsed, { pollProfile }));
 
     const tasks = [];
     let shouldRetry = false;
@@ -181,7 +204,7 @@ export async function pollMultipleTasks(client, options) {
 }
 
 export async function pollBatch(client, options) {
-  const { batchId, taskIds, ctx, outputKey, outputLabel } = options;
+  const { batchId, taskIds, ctx, outputKey, outputLabel, pollProfile } = options;
   const start = Date.now();
 
   while (true) {
@@ -203,7 +226,7 @@ export async function pollBatch(client, options) {
       };
     }
 
-    await sleep(ctx.pollIntervalMs);
+    await sleep(resolvePollIntervalMs(ctx, elapsed, { pollProfile }));
 
     let res;
     try {

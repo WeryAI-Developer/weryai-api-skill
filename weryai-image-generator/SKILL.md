@@ -6,7 +6,7 @@ metadata: { "openclaw": { "emoji": "🎨", "primaryEnv": "WERYAI_API_KEY", "requ
 
 # WeryAI Image Generator
 
-Generate WeryAI images with the official base skill for text-to-image and image-to-image workflows. It defaults to `WERYAI_IMAGE_2_0` with `image_number=1` and `aspect_ratio=9:16`, while still allowing the user to switch models and override image parameters when needed.
+Generate WeryAI images with the official base skill for text-to-image and image-to-image workflows. It defaults to **WeryAI Image 2.0** (`WERYAI_IMAGE_2_0`) with `image_number=1` and `aspect_ratio=9:16`, while still allowing the user to switch models and override image parameters when needed.
 
 ## Example Prompts
 
@@ -19,9 +19,9 @@ Generate WeryAI images with the official base skill for text-to-image and image-
 ## Quick Summary
 
 - Main jobs: `text-to-image`, `image-to-image`, `image from prompt`, `restyle this image`, `task status`
-- Default model: `WERYAI_IMAGE_2_0`
+- Default model: **WeryAI Image 2.0** (`WERYAI_IMAGE_2_0`)
 - Default parameters: `image_number=1`, `aspect_ratio=9:16`
-- Main trust signals: dry-run support, model capability lookup, paid-run warning, HTTPS image validation
+- Main trust signals: dry-run support, model capability lookup, paid-run warning, media-source validation with auto upload for local references
 
 ## Authentication and first-time setup
 
@@ -60,7 +60,7 @@ node {baseDir}/scripts/wait-image.js --json '{"prompt":"A glowing paper lantern 
 
 - `WERYAI_API_KEY` must be set before paid runs.
 - Node.js `>=18` is required because the runtime uses built-in `fetch`.
-- Reference images must be public `https` URLs. Do not pass local file paths.
+- For image-to-image, reference images may be `http/https` URLs or local/file sources. Local/non-http(s) sources are uploaded first via `/v1/generation/upload-file`.
 - Real `submit` and `wait` runs consume WeryAI credits.
 
 ## Security And API Hosts
@@ -80,7 +80,7 @@ node {baseDir}/scripts/wait-image.js --json '{"prompt":"A glowing paper lantern 
 
 Unless the user explicitly changes them, prefer:
 
-- `model`: `WERYAI_IMAGE_2_0`
+- `model`: `WERYAI_IMAGE_2_0` (`WERYAI_IMAGE_2_0`)
 - `image_number`: `1`
 - `aspect_ratio`: `9:16`
 
@@ -90,7 +90,7 @@ Always allow the user to override `model`, `image_number`, `aspect_ratio`, and `
 
 Guide the user progressively instead of explaining every parameter up front.
 
-- If the user only wants an image, proceed with the default `WERYAI_IMAGE_2_0` configuration.
+- If the user only wants an image, proceed with the default **WeryAI Image 2.0** (`WERYAI_IMAGE_2_0`) configuration.
 - If the user asks for a different model, better quality, more images, another aspect ratio, or a specific resolution, switch into parameter-confirmation mode.
 - If the user already knows the exact parameter they want, apply it directly and only validate model support when needed.
 - If the user sounds unsure, translate their creative request into the closest supported parameters rather than asking them to choose raw API fields.
@@ -100,7 +100,7 @@ Guide the user progressively instead of explaining every parameter up front.
 Use short operator-style guidance like this:
 
 - Default run:
-  `I can start with the default setup: WERYAI_IMAGE_2_0, 1 image, 9:16. If you want, I can also switch the model or adjust the image count, aspect ratio, or resolution before submission.`
+  `I can start with the default setup: WeryAI Image 2.0, 1 image, 9:16. If you want, I can also switch the model or adjust the image count, aspect ratio, or resolution before submission.`
 - Model switching:
   `If you want another model, tell me whether you care more about realism, stylization, reference-image fidelity, higher resolution, or output count, and I will check the supported models first.`
 - Parameter changes:
@@ -201,7 +201,7 @@ node {baseDir}/scripts/balance-image.js
 
 1. Identify the user's intent: text-to-image, image-to-image, status lookup, or model lookup.
 2. Collect the `prompt` and, if needed, one or more public `https` reference image URLs.
-3. Apply defaults: `WERYAI_IMAGE_2_0`, `image_number=1`, `aspect_ratio=9:16`, unless the user asks otherwise.
+3. Apply defaults: **WeryAI Image 2.0** (`WERYAI_IMAGE_2_0`), `image_number=1`, `aspect_ratio=9:16`, unless the user asks otherwise.
 4. If the user wants a custom model or non-default parameters, run `models-image.js` first when support is uncertain.
 5. Use `--dry-run` when you need to preview the final payload before a paid submission.
 6. Use `wait-image.js` when the user wants final image URLs now.
@@ -212,7 +212,7 @@ node {baseDir}/scripts/balance-image.js
 
 - `prompt` is required for both text-to-image and image-to-image requests.
 - For image-to-image, either `image` or `images` is accepted; both are normalized to the API `images` array.
-- Every reference image must be a public `https` URL.
+- Every reference image source can be `http/https` URL or local/file source (local/file sources are uploaded first).
 - Prefer model-supported values for `aspect_ratio`, `image_number`, and `resolution`.
 - Do not invent undocumented request fields.
 

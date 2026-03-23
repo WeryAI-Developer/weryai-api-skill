@@ -4,13 +4,13 @@ Use this package when the task is official WeryAI video generation through the W
 
 Preferred entry points:
 
-- `node {baseDir}/scripts/wait-video.js`
-- `node {baseDir}/scripts/submit-text-video.js`
-- `node {baseDir}/scripts/submit-image-video.js`
-- `node {baseDir}/scripts/submit-multi-image-video.js`
-- `node {baseDir}/scripts/status-video.js`
-- `node {baseDir}/scripts/models-video.js`
-- `node {baseDir}/scripts/balance-video.js`
+- `node scripts/wait-video.js`
+- `node scripts/submit-text-video.js`
+- `node scripts/submit-image-video.js`
+- `node scripts/submit-multi-image-video.js`
+- `node scripts/status-video.js`
+- `node scripts/models-video.js`
+- `node scripts/balance-video.js`
 
 Route intents this way:
 

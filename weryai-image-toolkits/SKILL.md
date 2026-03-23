@@ -1,12 +1,16 @@
 ---
 name: weryai-image-toolkits
-description: Edit images with WeryAI image tools for image-to-prompt, background change, background remove, canvas expand, face swap, reframe, repair, text erase, image translate, and image upscale. Use when the user wants WeryAI image editing or image post-processing on an existing image instead of text-to-image or image-to-image generation.
+description: Use when you need WeryAI image tools for image editing and image post-processing on existing images: background removal, background change, canvas expansion, face swap, reframe, repair, text erase, translation, upscale, or image-to-prompt.
 metadata: { "openclaw": { "emoji": "🖼️", "primaryEnv": "WERYAI_API_KEY", "paid": true, "network_required": true, "requires": { "env": ["WERYAI_API_KEY"], "bins": ["node"], "node": ">=18" } } }
 ---
 
 # WeryAI Image Toolkits
 
-Use this skill for official WeryAI image editing, image post-processing, and WeryAI image tools on an existing image URL. It covers image-to-prompt, background change, background remove, canvas expand, face swap, reframe, repair, text erase, image translate, and image upscale. This skill is intentionally strict about secret declaration and input safety: the only runtime secret is `WERYAI_API_KEY`, and all media inputs must be public `https` URLs rather than ad-hoc local uploads.
+WeryAI image tools, image editing, image post-processing, background remove, background change, face swap, reframe, repair, text erase, translate, upscale, image-to-prompt.
+
+WeryAI image tools for image editing and image post-processing on existing images.
+
+Use this skill for official WeryAI image editing, image post-processing, and WeryAI image tools on an existing image source. Use when you need WeryAI image tools for image-to-prompt, background change, background remove, canvas expand, face swap, reframe, repair, text erase, image translate, image upscale, or prompt extraction. This skill is intentionally strict about secret declaration and input safety: the only runtime secret is `WERYAI_API_KEY`, and media inputs support `http/https` URLs plus local/file sources that are uploaded first.
 
 This is not an image generation skill. Use it when the user wants to analyze, clean up, repair, translate, reframe, expand, upscale, or otherwise transform an existing image with WeryAI rather than generate a brand-new image from a prompt.
 
@@ -62,7 +66,7 @@ node {baseDir}/scripts/image_toolkits.js wait --tool background-remove --json '{
 
 - `WERYAI_API_KEY` must be set before running `image_toolkits.js` for paid calls.
 - Node.js `>=18` is required because the runtime uses built-in `fetch`.
-- `img_url` and `face_img_url` must be public `https` URLs. Do not pass local files.
+- `img_url` and `face_img_url` can be `http/https` URLs or local/file sources. Local/non-http(s) sources are uploaded first.
 - Real `submit`, `wait`, and `status` commands can consume WeryAI credits or depend on existing paid tasks.
 
 ## Security And API Hosts
@@ -169,7 +173,7 @@ node {baseDir}/scripts/image_toolkits.js status --task-id <task-id>
 
 ## Input Rules
 
-- `img_url` and `face_img_url` must be public `https` URLs.
+- `img_url` and `face_img_url` can be `http/https` URLs or local/file sources.
 - `image-to-prompt` requires `image_size` in KB.
 - `background-change` requires `prompt` or `bg_color`.
 - `expand` requires `original_image_size`, `canvas_size`, and `original_image_location`.
@@ -203,7 +207,7 @@ The task is done when:
 
 - Do not treat this skill as a text-to-image or image-to-image generator.
 - Do not ask the user to choose raw API fields when a safe default already fits the request.
-- Do not use local file paths for `img_url` or `face_img_url`.
+- Do not use unsupported file types for `img_url` or `face_img_url`; local sources are uploaded before the toolkit request.
 - Do not re-run paid processing casually because each `submit` or `wait` call can create a new paid task.
 - Do not broaden this skill beyond the documented WeryAI image-tools API surface.
 

@@ -12,7 +12,12 @@
  *   WERYAI_API_KEY
  */
 
+const fs = require("node:fs/promises");
+const path = require("node:path");
+const { fileURLToPath } = require("node:url");
+
 const BASE_URL = (process.env.WERYAI_BASE_URL || "https://api.weryai.com").replace(/\/$/, "");
+const UPLOAD_API_PATH = "/v1/generation/upload-file";
 const POLL_INTERVAL_MS = Number(process.env.WERYAI_POLL_INTERVAL_MS || 6000);
 const POLL_TIMEOUT_MS = Number(process.env.WERYAI_POLL_TIMEOUT_MS || 600000);
 
@@ -32,14 +37,24 @@ const STATUS_MAP = {
 };
 
 const ERROR_MESSAGES = {
-  400: "Bad request. Check your request parameters.",
-  403: "Invalid API key or IP access denied. Verify WERYAI_API_KEY.",
-  500: "WeryAI server error. Please try again later.",
-  1001: "Parameter error. Check the required fields and enum values.",
-  1002: "Authentication failed. Verify WERYAI_API_KEY.",
-  1003: "Task or resource not found.",
-  1011: "Insufficient credits. Recharge at weryai.com.",
-  6004: "Generation failed. Please try again later.",
+  400: "Some of the request details are invalid. Please review your input and try again.",
+  403: "Authentication failed. Please check your API key and try again.",
+  429: "Too many requests in a short time. Please wait a moment and try again.",
+  500: "Something went wrong on our side. Please try again in a moment.",
+};
+
+const STATIC_ERROR_MAP = {
+  1001: { category: "rate_limit", title: "Too many requests", message: "Too many requests in a short time. Please wait a moment and try again.", retryable: true },
+  1003: { category: "not_found", title: "Resource not found", message: "The requested item could not be found. Please check the ID or input and try again.", retryable: false },
+  1010: { category: "not_found", title: "Resource not found", message: "The requested item could not be found. Please check the ID or input and try again.", retryable: false },
+  1011: { category: "credits", title: "Not enough credits", message: "You do not have enough credits to complete this request.", retryable: false },
+  2003: { category: "content_safety", title: "Content flagged", message: "The provided video or request content was flagged by the safety system. Please revise it and try again.", retryable: false },
+  6001: { category: "server", title: "Temporary service issue", message: "Something went wrong on our side. Please try again in a moment.", retryable: true },
+  6002: { category: "rate_limit", title: "Too many requests", message: "Too many requests in a short time. Please wait a moment and try again.", retryable: true },
+  6003: { category: "server", title: "Temporary service issue", message: "Something went wrong on our side. Please try again in a moment.", retryable: true },
+  6004: { category: "server", title: "Generation failed", message: "The request could not be completed. Please try again with different input or try again later.", retryable: true },
+  6010: { category: "active_job_limit", title: "Too many active jobs", message: "You already have too many active jobs. Please wait for current jobs to finish before starting a new one.", retryable: true },
+  6101: { category: "daily_limit", title: "Daily limit reached", message: "You have reached the daily limit for this workflow. Please try again later.", retryable: true },
 };
 
 const RECT_FIELDS = ["lt_x", "lt_y", "rb_x", "rb_y"];
@@ -168,7 +183,7 @@ function printHelp() {
     "Notes:",
     "  - Real submit/wait/status calls require WERYAI_API_KEY.",
     "  - Dry-run validates and prints the request body without calling WeryAI.",
-    "  - video_url, image_url, and audio_url must be public https:// URLs.",
+    "  - video_url, image_url, and audio_url can be http/https URLs; local/non-http(s) sources are uploaded first.",
   ];
   process.stdout.write(lines.join("\n") + "\n");
 }
@@ -213,11 +228,7 @@ function buildPayload(toolId, input) {
 
 function validateHttpsUrl(value, fieldName, errors) {
   if (typeof value !== "string" || value.trim().length === 0) {
-    errors.push(`${fieldName} must be a non-empty URL string.`);
-    return;
-  }
-  if (!value.startsWith("https://")) {
-    errors.push(`${fieldName} must be a public https:// URL.`);
+    errors.push(`${fieldName} must be a non-empty source string.`);
   }
 }
 
@@ -282,6 +293,129 @@ function getApiKey() {
   return apiKey;
 }
 
+function isRemoteUrl(value) {
+  if (typeof value !== "string" || value.trim().length === 0) return false;
+  try {
+    const url = new URL(value);
+    return url.protocol === "http:" || url.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+function normalizeLocalFilePath(value) {
+  if (typeof value !== "string" || value.trim().length === 0) return null;
+  if (value.startsWith("file://")) return fileURLToPath(new URL(value));
+  return path.resolve(value);
+}
+
+function inferMimeTypeByExtension(filePath) {
+  const ext = path.extname(filePath).toLowerCase();
+  if (ext === ".jpg" || ext === ".jpeg") return "image/jpeg";
+  if (ext === ".png") return "image/png";
+  if (ext === ".webp") return "image/webp";
+  if (ext === ".gif") return "image/gif";
+  if (ext === ".bmp") return "image/bmp";
+  if (ext === ".tiff" || ext === ".tif") return "image/tiff";
+  if (ext === ".mp4") return "video/mp4";
+  if (ext === ".mov") return "video/quicktime";
+  if (ext === ".m4v") return "video/x-m4v";
+  if (ext === ".webm") return "video/webm";
+  if (ext === ".avi") return "video/x-msvideo";
+  if (ext === ".mkv") return "video/x-matroska";
+  if (ext === ".mp3") return "audio/mpeg";
+  if (ext === ".wav") return "audio/wav";
+  if (ext === ".m4a") return "audio/mp4";
+  if (ext === ".aac") return "audio/aac";
+  if (ext === ".flac") return "audio/flac";
+  if (ext === ".ogg") return "audio/ogg";
+  return "application/octet-stream";
+}
+
+function extractUploadUrl(res) {
+  const list = res?.data?.object_url_list;
+  if (Array.isArray(list) && typeof list[0] === "string" && list[0].trim()) {
+    return list[0].trim();
+  }
+  return null;
+}
+
+function collectUploadPreview(toolId, payload) {
+  const spec = TOOLS[toolId];
+  const out = [];
+  for (const field of spec.urlFields) {
+    const value = payload[field];
+    if (typeof value === "string" && value.trim() && !isRemoteUrl(value)) {
+      out.push({ field, source: value });
+    }
+  }
+  return out;
+}
+
+async function uploadLocalFile(apiKey, source) {
+  const localPath = normalizeLocalFilePath(source);
+  if (!localPath) throw new Error(`Invalid local path: ${source}`);
+
+  const stat = await fs.stat(localPath);
+  if (!stat.isFile()) throw new Error(`Local path is not a file: ${source}`);
+
+  const fileBuffer = await fs.readFile(localPath);
+  const fileName = path.basename(localPath);
+  const mimeType = inferMimeTypeByExtension(localPath);
+  const form = new FormData();
+  form.append("file", new Blob([fileBuffer], { type: mimeType }), fileName);
+  form.append("batch_no", `video-toolkits-upload-${Date.now()}`);
+  form.append("fixed", "false");
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 60000);
+
+  let res;
+  try {
+    res = await fetch(`${BASE_URL}${UPLOAD_API_PATH}`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${apiKey}` },
+      body: form,
+      signal: controller.signal,
+    });
+  } catch (error) {
+    clearTimeout(timer);
+    if (error?.name === "AbortError") throw new Error(`Upload timeout: ${source}`);
+    throw error;
+  }
+  clearTimeout(timer);
+
+  let data;
+  try {
+    data = await res.json();
+  } catch {
+    throw new Error(`Upload failed with non-JSON response (HTTP ${res.status}).`);
+  }
+
+  const wrapped = { httpStatus: res.status, ...data };
+  if (!isApiSuccess(wrapped)) {
+    const apiErr = formatApiError(wrapped);
+    throw new Error(apiErr.errorMessage || `Upload failed (HTTP ${res.status}).`);
+  }
+
+  const uploaded = extractUploadUrl(wrapped);
+  if (!uploaded) throw new Error("Upload succeeded but object_url_list[0] is missing.");
+  return uploaded;
+}
+
+async function resolvePayloadMediaSources(toolId, payload, apiKey) {
+  const spec = TOOLS[toolId];
+  const out = { ...payload };
+  for (const field of spec.urlFields) {
+    const value = out[field];
+    if (typeof value !== "string" || value.trim().length === 0) continue;
+    if (!isRemoteUrl(value)) {
+      out[field] = await uploadLocalFile(apiKey, value);
+    }
+  }
+  return out;
+}
+
 async function httpJson(method, url, body, apiKey) {
   const headers = {
     "Content-Type": "application/json",
@@ -323,28 +457,62 @@ function isApiSuccess(res) {
   return httpOk && bodyOk;
 }
 
-function formatApiError(res) {
-  const httpStatus = res.httpStatus || 0;
-  const code = res.status;
-  const msg = res.msg || res.message || "";
-
-  if (httpStatus === 403) {
-    return { ok: false, phase: "failed", errorCode: "403", errorMessage: `${ERROR_MESSAGES[403]}${msg ? ` (${msg})` : ""}` };
-  }
-  if (httpStatus >= 500) {
-    return { ok: false, phase: "failed", errorCode: "500", errorMessage: `${ERROR_MESSAGES[500]}${msg ? ` (${msg})` : ""}` };
-  }
-  if (httpStatus === 400) {
-    return { ok: false, phase: "failed", errorCode: "400", errorMessage: `${ERROR_MESSAGES[400]}${msg ? ` (${msg})` : ""}` };
-  }
-
-  const friendly = ERROR_MESSAGES[code] || "";
+function createFailure(errorCode, title, message, extra = {}) {
   return {
     ok: false,
     phase: "failed",
-    errorCode: code != null ? String(code) : null,
-    errorMessage: friendly && msg ? `${friendly} (${msg})` : friendly || msg || `API error (status ${code}, HTTP ${httpStatus})`,
+    errorCode: errorCode != null ? String(errorCode) : null,
+    errorTitle: title,
+    errorMessage: message,
+    ...extra,
   };
+}
+
+function pickRawMessage(res) {
+  return String(res.msg || res.message || res.desc || "").trim();
+}
+
+function formatApiError(res) {
+  const httpStatus = res.httpStatus || 0;
+  const code = res.status;
+
+  if (httpStatus === 403) {
+    return createFailure("403", "Authentication failed", ERROR_MESSAGES[403], {
+      errorCategory: "auth",
+      retryable: false,
+    });
+  }
+  if (httpStatus === 429) {
+    return createFailure("429", "Too many requests", ERROR_MESSAGES[429], {
+      errorCategory: "rate_limit",
+      retryable: true,
+    });
+  }
+  if (httpStatus >= 500) {
+    return createFailure("500", "Temporary service issue", ERROR_MESSAGES[500], {
+      errorCategory: "server",
+      retryable: true,
+    });
+  }
+  if (httpStatus === 400) {
+    return createFailure("400", "Invalid request", ERROR_MESSAGES[400], {
+      errorCategory: "validation",
+      retryable: false,
+    });
+  }
+
+  const mapped = STATIC_ERROR_MAP[code];
+  if (mapped) {
+    return createFailure(code, mapped.title, mapped.message, {
+      errorCategory: mapped.category,
+      retryable: mapped.retryable,
+    });
+  }
+
+  return createFailure(code, "Request failed", pickRawMessage(res) || "We could not complete this request right now. Please try again later.", {
+    errorCategory: "server",
+    retryable: true,
+  });
 }
 
 function extractVideos(taskData) {
@@ -375,7 +543,10 @@ async function submitTool(toolId, payload, apiKey) {
     taskId: taskIds[0] ?? data.task_id ?? null,
     taskStatus: null,
     videos: null,
+    errorTitle: null,
     errorCode: null,
+    errorCategory: null,
+    retryable: null,
     errorMessage: null,
   };
 }
@@ -395,8 +566,11 @@ async function statusTask(taskId, apiKey) {
     taskId,
     taskStatus: rawStatus,
     videos: extractVideos(taskData),
+    errorTitle: normalized === "failed" ? "Task failed" : null,
     errorCode: normalized === "failed" ? "TASK_FAILED" : null,
-    errorMessage: normalized === "failed" ? result.message || taskData.msg || "Task failed." : null,
+    errorCategory: normalized === "failed" ? "task" : null,
+    retryable: normalized === "failed" ? false : null,
+    errorMessage: normalized === "failed" ? result.message || taskData.msg || "The task could not be completed. Please review the request and try again." : null,
   };
 }
 
@@ -414,7 +588,10 @@ async function waitForTask(taskId, apiKey) {
     taskId,
     taskStatus: "unknown",
     videos: null,
+    errorTitle: "Request timed out",
     errorCode: "TIMEOUT",
+    errorCategory: "timeout",
+    retryable: true,
     errorMessage: `Poll timeout after ${Math.floor(POLL_TIMEOUT_MS / 1000)}s.`,
   };
 }
@@ -484,7 +661,10 @@ async function main() {
       print({
         ok: false,
         phase: "failed",
+        errorTitle: "Missing API key",
         errorCode: "NO_API_KEY",
+        errorCategory: "auth",
+        retryable: false,
         errorMessage: "Missing WERYAI_API_KEY environment variable. Get one from https://www.weryai.com/api/keys and configure it only in the runtime environment before using this skill.",
       }, true);
       process.exitCode = 1;
@@ -512,7 +692,10 @@ async function main() {
       ok: false,
       phase: "failed",
       tool: toolId,
+      errorTitle: "Invalid request",
       errorCode: "VALIDATION",
+      errorCategory: "validation",
+      retryable: false,
       errorMessage: validationErrors.join(" "),
       required: TOOLS[toolId].required,
       defaults: TOOLS[toolId].defaults,
@@ -522,16 +705,21 @@ async function main() {
   }
 
   if (args.dryRun) {
+    const uploadPreview = collectUploadPreview(toolId, payload);
     print({
       ok: true,
       phase: args.command === "wait" ? "wait-dry-run" : "submit-dry-run",
       tool: toolId,
       endpoint: TOOLS[toolId].endpoint,
+      uploadPreview,
       requestPreview: {
         method: "POST",
         url: `${BASE_URL}${TOOLS[toolId].endpoint}`,
         body: payload,
       },
+      notes: uploadPreview.length > 0
+        ? "dry-run does not upload local files. Local sources in uploadPreview will be uploaded in a real run via /v1/generation/upload-file."
+        : null,
     }, true);
     return;
   }
@@ -541,14 +729,35 @@ async function main() {
     print({
       ok: false,
       phase: "failed",
+      errorTitle: "Missing API key",
       errorCode: "NO_API_KEY",
+      errorCategory: "auth",
+      retryable: false,
       errorMessage: "Missing WERYAI_API_KEY environment variable. Get one from https://www.weryai.com/api/keys and configure it only in the runtime environment before using this skill.",
     }, true);
     process.exitCode = 1;
     return;
   }
 
-  const submitResult = await submitTool(toolId, payload, apiKey);
+  let resolvedPayload;
+  try {
+    resolvedPayload = await resolvePayloadMediaSources(toolId, payload, apiKey);
+  } catch (error) {
+    print({
+      ok: false,
+      phase: "failed",
+      tool: toolId,
+      errorTitle: "Upload failed",
+      errorCode: "UPLOAD_FAILED",
+      errorCategory: "upload",
+      retryable: true,
+      errorMessage: error instanceof Error ? error.message : String(error),
+    }, true);
+    process.exitCode = 1;
+    return;
+  }
+
+  const submitResult = await submitTool(toolId, resolvedPayload, apiKey);
   if (!submitResult.ok) {
     print(submitResult, true);
     process.exitCode = 1;

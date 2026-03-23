@@ -1,4 +1,5 @@
 import { FALLBACK_DEFAULTS } from './models.js';
+import { normalizeSourceArray } from './upload.js';
 
 export function normalizeVideoInput(rawInput) {
   const input = { ...rawInput };
@@ -30,6 +31,17 @@ export function normalizeVideoInput(rawInput) {
     input.images = [firstFrame || input.image, lastFrame];
   }
 
+  input.videos = normalizeSourceArray(input.videos ?? input.video_refs ?? input.videoRefs);
+  input.audios = normalizeSourceArray(input.audios ?? input.audio_refs ?? input.audioRefs);
+
+  if (
+    (input.videos.length > 0 || input.audios.length > 0) &&
+    (!Array.isArray(input.images) || input.images.length === 0) &&
+    input.image
+  ) {
+    input.images = [input.image];
+  }
+
   if (input.duration == null && input.dur == null) {
     input.duration = FALLBACK_DEFAULTS.duration;
   }
@@ -38,6 +50,12 @@ export function normalizeVideoInput(rawInput) {
 }
 
 export function detectVideoMode(input) {
+  if (
+    (Array.isArray(input.videos) && input.videos.length > 0) ||
+    (Array.isArray(input.audios) && input.audios.length > 0)
+  ) {
+    return 'almighty';
+  }
   if (Array.isArray(input.images) && input.images.length > 0) return 'multi_image';
   if (typeof input.image === 'string' && input.image) return 'image';
   return 'text';

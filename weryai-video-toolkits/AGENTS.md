@@ -4,10 +4,10 @@ Use this package when the user wants WeryAI video editing or post-processing rat
 
 Preferred entry points:
 
-- `node {baseDir}/scripts/video_toolkits.js tools`
-- `node {baseDir}/scripts/video_toolkits.js submit --tool <tool-id> --json '{...}'`
-- `node {baseDir}/scripts/video_toolkits.js wait --tool <tool-id> --json '{...}'`
-- `node {baseDir}/scripts/video_toolkits.js status --task-id <task-id>`
+- `node scripts/video_toolkits.js tools`
+- `node scripts/video_toolkits.js submit --tool <tool-id> --json '{...}'`
+- `node scripts/video_toolkits.js wait --tool <tool-id> --json '{...}'`
+- `node scripts/video_toolkits.js status --task-id <task-id>`
 
 Route intents this way:
 

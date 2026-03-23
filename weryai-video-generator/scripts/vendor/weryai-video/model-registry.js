@@ -1,6 +1,8 @@
 import { createClient, log } from '../weryai-core/client.js';
 import { FALLBACK_DEFAULTS, MODELS_API_PATH } from './models.js';
 import { coerceBool } from './utils.js';
+import { resolveDefaultGenerateAudio } from './audio-default.js';
+import { normalizeModelEntry } from '../weryai-core/model-display.js';
 
 export async function fetchModelRegistry(ctx) {
   try {
@@ -28,7 +30,8 @@ function indexByKey(arr) {
   const map = new Map();
   if (!Array.isArray(arr)) return map;
   for (const item of arr) {
-    if (item.model_key) map.set(item.model_key, item);
+    const normalized = normalizeModelEntry(item);
+    if (normalized?.model_key) map.set(normalized.model_key, normalized);
   }
   return map;
 }
@@ -163,7 +166,7 @@ export function buildBody(meta, input, mode) {
   if (resolvedResolution != null) body.resolution = resolvedResolution;
 
   if (meta.has_generate_audio === true) {
-    body.generate_audio = coerceBool(input.generate_audio ?? input.generateAudio, false);
+    body.generate_audio = resolveDefaultGenerateAudio(input, meta.model_key);
   }
 
   if ((input.negative_prompt || input.negativePrompt) && meta.has_negative_prompt === true) {

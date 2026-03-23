@@ -12,7 +12,12 @@
  *   WERYAI_API_KEY
  */
 
+const fs = require("node:fs/promises");
+const path = require("node:path");
+const { fileURLToPath } = require("node:url");
+
 const BASE_URL = (process.env.WERYAI_BASE_URL || "https://api.weryai.com").replace(/\/$/, "");
+const UPLOAD_API_PATH = "/v1/generation/upload-file";
 const POLL_INTERVAL_MS = Number(process.env.WERYAI_POLL_INTERVAL_MS || 6000);
 const POLL_TIMEOUT_MS = Number(process.env.WERYAI_POLL_TIMEOUT_MS || 600000);
 
@@ -337,7 +342,7 @@ function printHelp() {
     "Notes:",
     "  - Real submit/wait/status calls require WERYAI_API_KEY.",
     "  - Dry-run validates and prints the request body without calling WeryAI.",
-    "  - img_url and face_img_url must be public https:// URLs.",
+    "  - img_url and face_img_url can be http/https URLs; local/non-http(s) sources are uploaded first.",
   ];
   process.stdout.write(lines.join("\n") + "\n");
 }
@@ -377,11 +382,7 @@ function buildPayload(toolId, input) {
 
 function validateHttpsUrl(value, fieldName, errors) {
   if (typeof value !== "string" || value.trim().length === 0) {
-    errors.push(`${fieldName} must be a non-empty URL string.`);
-    return;
-  }
-  if (!value.startsWith("https://")) {
-    errors.push(`${fieldName} must be a public https:// URL.`);
+    errors.push(`${fieldName} must be a non-empty source string.`);
   }
 }
 
@@ -453,6 +454,129 @@ function validatePayload(toolId, payload) {
 function getApiKey() {
   const apiKey = (process.env.WERYAI_API_KEY || "").trim();
   return apiKey || null;
+}
+
+function isRemoteUrl(value) {
+  if (typeof value !== "string" || value.trim().length === 0) return false;
+  try {
+    const url = new URL(value);
+    return url.protocol === "http:" || url.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+function normalizeLocalFilePath(value) {
+  if (typeof value !== "string" || value.trim().length === 0) return null;
+  if (value.startsWith("file://")) return fileURLToPath(new URL(value));
+  return path.resolve(value);
+}
+
+function inferMimeTypeByExtension(filePath) {
+  const ext = path.extname(filePath).toLowerCase();
+  if (ext === ".jpg" || ext === ".jpeg") return "image/jpeg";
+  if (ext === ".png") return "image/png";
+  if (ext === ".webp") return "image/webp";
+  if (ext === ".gif") return "image/gif";
+  if (ext === ".bmp") return "image/bmp";
+  if (ext === ".tiff" || ext === ".tif") return "image/tiff";
+  if (ext === ".mp4") return "video/mp4";
+  if (ext === ".mov") return "video/quicktime";
+  if (ext === ".m4v") return "video/x-m4v";
+  if (ext === ".webm") return "video/webm";
+  if (ext === ".avi") return "video/x-msvideo";
+  if (ext === ".mkv") return "video/x-matroska";
+  if (ext === ".mp3") return "audio/mpeg";
+  if (ext === ".wav") return "audio/wav";
+  if (ext === ".m4a") return "audio/mp4";
+  if (ext === ".aac") return "audio/aac";
+  if (ext === ".flac") return "audio/flac";
+  if (ext === ".ogg") return "audio/ogg";
+  return "application/octet-stream";
+}
+
+function extractUploadUrl(res) {
+  const list = res?.data?.object_url_list;
+  if (Array.isArray(list) && typeof list[0] === "string" && list[0].trim()) {
+    return list[0].trim();
+  }
+  return null;
+}
+
+function collectUploadPreview(toolId, payload) {
+  const spec = TOOLS[toolId];
+  const out = [];
+  for (const field of spec.urlFields) {
+    const value = payload[field];
+    if (typeof value === "string" && value.trim() && !isRemoteUrl(value)) {
+      out.push({ field, source: value });
+    }
+  }
+  return out;
+}
+
+async function uploadLocalFile(apiKey, source) {
+  const localPath = normalizeLocalFilePath(source);
+  if (!localPath) throw new Error(`Invalid local path: ${source}`);
+
+  const stat = await fs.stat(localPath);
+  if (!stat.isFile()) throw new Error(`Local path is not a file: ${source}`);
+
+  const fileBuffer = await fs.readFile(localPath);
+  const fileName = path.basename(localPath);
+  const mimeType = inferMimeTypeByExtension(localPath);
+  const form = new FormData();
+  form.append("file", new Blob([fileBuffer], { type: mimeType }), fileName);
+  form.append("batch_no", `image-toolkits-upload-${Date.now()}`);
+  form.append("fixed", "false");
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 60000);
+
+  let res;
+  try {
+    res = await fetch(`${BASE_URL}${UPLOAD_API_PATH}`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${apiKey}` },
+      body: form,
+      signal: controller.signal,
+    });
+  } catch (error) {
+    clearTimeout(timer);
+    if (error?.name === "AbortError") throw new Error(`Upload timeout: ${source}`);
+    throw error;
+  }
+  clearTimeout(timer);
+
+  let data;
+  try {
+    data = await res.json();
+  } catch {
+    throw new Error(`Upload failed with non-JSON response (HTTP ${res.status}).`);
+  }
+
+  const wrapped = { httpStatus: res.status, ...data };
+  if (!isApiSuccess(wrapped)) {
+    const apiErr = formatApiError(wrapped);
+    throw new Error(apiErr.errorMessage || `Upload failed (HTTP ${res.status}).`);
+  }
+
+  const uploaded = extractUploadUrl(wrapped);
+  if (!uploaded) throw new Error("Upload succeeded but object_url_list[0] is missing.");
+  return uploaded;
+}
+
+async function resolvePayloadMediaSources(toolId, payload, apiKey) {
+  const spec = TOOLS[toolId];
+  const out = { ...payload };
+  for (const field of spec.urlFields) {
+    const value = out[field];
+    if (typeof value !== "string" || value.trim().length === 0) continue;
+    if (!isRemoteUrl(value)) {
+      out[field] = await uploadLocalFile(apiKey, value);
+    }
+  }
+  return out;
 }
 
 async function httpJson(method, url, body, apiKey) {
@@ -775,16 +899,21 @@ async function main() {
   }
 
   if (args.dryRun) {
+    const uploadPreview = collectUploadPreview(toolId, payload);
     print({
       ok: true,
       phase: args.command === "wait" ? "wait-dry-run" : "submit-dry-run",
       tool: toolId,
       endpoint: TOOLS[toolId].endpoint,
+      uploadPreview,
       requestPreview: {
         method: "POST",
         url: `${BASE_URL}${TOOLS[toolId].endpoint}`,
         body: payload,
       },
+      notes: uploadPreview.length > 0
+        ? "dry-run does not upload local files. Local sources in uploadPreview will be uploaded in a real run via /v1/generation/upload-file."
+        : null,
     });
     return;
   }
@@ -804,7 +933,25 @@ async function main() {
     return;
   }
 
-  const submitResult = await submitTool(toolId, payload, apiKey);
+  let resolvedPayload;
+  try {
+    resolvedPayload = await resolvePayloadMediaSources(toolId, payload, apiKey);
+  } catch (error) {
+    print({
+      ok: false,
+      phase: "failed",
+      tool: toolId,
+      errorTitle: "Upload failed",
+      errorCode: "UPLOAD_FAILED",
+      errorCategory: "upload",
+      retryable: true,
+      errorMessage: error instanceof Error ? error.message : String(error),
+    });
+    process.exitCode = 1;
+    return;
+  }
+
+  const submitResult = await submitTool(toolId, resolvedPayload, apiKey);
   if (!submitResult.ok) {
     print(submitResult);
     process.exitCode = 1;

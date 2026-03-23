@@ -5,7 +5,7 @@ import { execute } from './lib/submit-text.js';
 const HELP = `Submit a text-to-video generation task.
 
 Usage:
-  node {baseDir}/scripts/submit-text-video.js --json '{"prompt":"A cat walking in a garden","duration":5}'
+  node scripts/submit-text-video.js --json '{"prompt":"A cat walking in a garden","duration":5}'
 
 Options:
   --json <data>  Pass parameters as JSON string (use "-" for stdin)

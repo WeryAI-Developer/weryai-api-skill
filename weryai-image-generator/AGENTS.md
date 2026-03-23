@@ -18,6 +18,10 @@ Route intents this way:
 - `taskId` or `batchId` -> status query, not a new paid submission
 - model or parameter question -> run `models-image.js` first
 
+Delivery rules:
+- When an image or image set is ready, send/display the actual image output to the user immediately.
+- Never stop at a filename or local file path alone. If the environment supports file sending, send the file. If it supports inline rendering, render inline. Otherwise provide a usable download URL.
+
 Read `SKILL.md` first for trigger language, defaults, workflow, and constraints.
 Read `references/api-models.md` when you need exact model capabilities or parameter support.
 Read `references/error-codes.md` when debugging failures or retry behavior.

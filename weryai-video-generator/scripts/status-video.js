@@ -5,8 +5,8 @@ import { execute } from './lib/status.js';
 const HELP = `Query a video generation task or batch.
 
 Usage:
-  node {baseDir}/scripts/status-video.js --task-id <task-id>
-  node {baseDir}/scripts/status-video.js --batch-id <batch-id>
+  node scripts/status-video.js --task-id <task-id>
+  node scripts/status-video.js --batch-id <batch-id>
 
 Options:
   --task-id <id>   Query a single task

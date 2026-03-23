@@ -12,6 +12,11 @@ export async function executeStatus(input, ctx, options) {
       ok: false,
       phase: 'failed',
       errorCode: 'VALIDATION',
+      errorCategory: 'validation',
+      errorTitle: 'Missing identifier',
+      retryable: false,
+      field: allowBatch && !taskId ? 'task_id|batch_id' : 'task_id',
+      hint: allowBatch ? 'Provide either a task ID or a batch ID.' : 'Provide a task ID and retry.',
       errorMessage: allowBatch
         ? 'Either --task-id or --batch-id is required.'
         : 'The status script requires `--task-id <task-id>`.',
@@ -52,6 +57,15 @@ async function queryTask(client, taskId, options) {
     coverUrl: task.coverUrl,
     balance: null,
     errorCode: phase === 'failed' || missingOutputs ? 'TASK_FAILED' : null,
+    errorCategory: phase === 'failed' || missingOutputs ? 'task' : null,
+    errorTitle: phase === 'failed'
+      ? 'Task failed'
+      : missingOutputs
+        ? `Missing ${outputLabel} output`
+        : null,
+    retryable: phase === 'failed' || missingOutputs ? false : null,
+    field: null,
+    hint: phase === 'failed' || missingOutputs ? 'Check the task payload and existing task status before submitting a new job.' : null,
     errorMessage: missingOutputs
       ? `Task reached a completed state but returned no ${outputLabel} URLs.`
       : phase === 'failed'
@@ -83,6 +97,11 @@ async function queryBatch(client, batchId, options) {
     batchId,
     tasks,
     errorCode: phase === 'failed' ? 'TASK_FAILED' : null,
+    errorCategory: phase === 'failed' ? 'task' : null,
+    errorTitle: phase === 'failed' ? 'Batch failed' : null,
+    retryable: phase === 'failed' ? false : null,
+    field: null,
+    hint: phase === 'failed' ? 'Inspect individual task states in the batch before retrying.' : null,
     errorMessage: phase === 'failed'
       ? `One or more tasks in the batch failed or returned no ${outputLabel} URLs.`
       : null,

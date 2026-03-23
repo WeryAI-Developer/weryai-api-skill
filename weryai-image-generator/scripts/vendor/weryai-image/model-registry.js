@@ -1,5 +1,6 @@
 import { createClient, log } from '../weryai-core/client.js';
 import { FALLBACK_DEFAULTS, MODELS_API_PATH } from './models.js';
+import { normalizeModelEntry } from '../weryai-core/model-display.js';
 
 export async function fetchModelRegistry(ctx) {
   try {
@@ -26,7 +27,8 @@ function indexByKey(arr) {
   const map = new Map();
   if (!Array.isArray(arr)) return map;
   for (const item of arr) {
-    if (item.model_key) map.set(item.model_key, item);
+    const normalized = normalizeModelEntry(item);
+    if (normalized?.model_key) map.set(normalized.model_key, normalized);
   }
   return map;
 }

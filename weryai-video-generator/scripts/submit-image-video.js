@@ -5,7 +5,7 @@ import { execute } from './lib/submit-image.js';
 const HELP = `Submit an image-to-video generation task.
 
 Usage:
-  node {baseDir}/scripts/submit-image-video.js --json '{"prompt":"Add motion","image":"https://example.com/input.png","duration":5}'
+  node scripts/submit-image-video.js --json '{"prompt":"Add motion","image":"https://example.com/input.png","duration":5}'
 
 Options:
   --json <data>  Pass parameters as JSON string (use "-" for stdin)

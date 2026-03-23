@@ -15,6 +15,13 @@ const STATUS_MAP = {
   FAILED: 'failed',
 };
 
+const CONTENT_STATUS_MAP = {
+  'text-success': 'text-success',
+  'text-fail': 'text-fail',
+  'audio-success': 'audio-success',
+  'audio-fail': 'audio-fail',
+};
+
 export function normalizeStatus(raw) {
   const mapped = STATUS_MAP[raw];
   if (!mapped) {
@@ -22,6 +29,12 @@ export function normalizeStatus(raw) {
     return 'unknown';
   }
   return mapped;
+}
+
+export function normalizeContentStatus(raw) {
+  if (typeof raw !== 'string' || !raw.trim()) return null;
+  const normalized = raw.trim().toLowerCase();
+  return CONTENT_STATUS_MAP[normalized] || normalized;
 }
 
 export function toPhase(normalizedStatus) {
@@ -79,21 +92,27 @@ function normalizeSingleTask(task) {
 
   const rawStatus = task.task_status ?? task.taskStatus ?? 'unknown';
   const status = normalizeStatus(rawStatus);
+  const contentStatus = normalizeContentStatus(
+    task.content_status ?? task.contentStatus ?? task.output?.content_status,
+  );
   const images = normalizeArray(task.images ?? task.output?.images);
   const videos = normalizeArray(task.videos ?? task.output?.videos);
   const audios = normalizeArray(task.audios ?? task.output?.audios);
   const lyrics = normalizeString(task.lyrics ?? task.output?.lyrics);
   const coverUrl = normalizeString(task.cover_url ?? task.coverUrl ?? task.output?.cover_url);
+  const scripts = normalizeScripts(task.scripts ?? task.output?.scripts ?? task.script ?? task.output?.script);
 
   return {
     taskId: task.task_id ?? task.taskId ?? null,
     rawStatus,
     taskStatus: status,
+    contentStatus,
     images,
     videos,
     audios,
     lyrics,
     coverUrl,
+    scripts,
     msg: task.msg ?? null,
   };
 }
@@ -104,6 +123,18 @@ function normalizeArray(value) {
 
 function normalizeString(value) {
   return typeof value === 'string' && value.trim() ? value : null;
+}
+
+function normalizeScripts(value) {
+  if (!Array.isArray(value) || value.length === 0) return null;
+  return value.map((entry) => {
+    if (!entry || typeof entry !== 'object') return entry;
+    return {
+      speakerId: entry.speaker_id ?? entry.speakerId ?? null,
+      speakerName: entry.speaker_name ?? entry.speakerName ?? null,
+      content: typeof entry.content === 'string' ? entry.content : null,
+    };
+  });
 }
 
 function pickSingleTask(tasks) {

@@ -5,7 +5,7 @@ import { execute } from './lib/submit-multi-image.js';
 const HELP = `Submit a multi-image-to-video generation task.
 
 Usage:
-  node {baseDir}/scripts/submit-multi-image-video.js --json '{"prompt":"Create a transition","images":["https://example.com/1.png","https://example.com/2.png"],"duration":5}'
+  node scripts/submit-multi-image-video.js --json '{"prompt":"Create a transition","images":["https://example.com/1.png","https://example.com/2.png"],"duration":5}'
 
 Options:
   --json <data>  Pass parameters as JSON string (use "-" for stdin)

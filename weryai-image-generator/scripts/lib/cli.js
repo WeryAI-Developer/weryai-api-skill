@@ -7,6 +7,7 @@ export async function runScript(argv, handler, helpText) {
   }
 
   const input = await resolveInput(flags);
+  const pollIntervalEnv = Number(process.env.WERYAI_POLL_INTERVAL_MS);
   const ctx = {
     apiKey: process.env.WERYAI_API_KEY || process.env.IMAGE_GEN_API_KEY || '',
     baseUrl: process.env.WERYAI_BASE_URL || 'https://api.weryai.com',
@@ -14,7 +15,7 @@ export async function runScript(argv, handler, helpText) {
     verbose: flags.verbose,
     dryRun: flags.dryRun,
     requestTimeoutMs: Number(process.env.WERYAI_REQUEST_TIMEOUT_MS) || 30_000,
-    pollIntervalMs: Number(process.env.WERYAI_POLL_INTERVAL_MS) || 4_000,
+    pollIntervalMs: Number.isFinite(pollIntervalEnv) ? pollIntervalEnv : null,
     pollTimeoutMs: Number(process.env.WERYAI_POLL_TIMEOUT_MS) || 300_000,
   };
 

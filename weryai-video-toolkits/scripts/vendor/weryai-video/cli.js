@@ -1,3 +1,6 @@
+const DEFAULT_SHORT_TASK_TIMEOUT_MS = 300_000;
+const DEFAULT_LONG_TASK_TIMEOUT_MS = 1_200_000;
+
 export async function runScript(argv, handler, helpText) {
   const flags = parseFlags(argv);
 
@@ -7,16 +10,7 @@ export async function runScript(argv, handler, helpText) {
   }
 
   const input = await resolveInput(flags);
-  const ctx = {
-    apiKey: process.env.WERYAI_API_KEY || '',
-    baseUrl: process.env.WERYAI_BASE_URL || 'https://api.weryai.com',
-    modelsBaseUrl: process.env.WERYAI_MODELS_BASE_URL || 'https://api-growth-agent.weryai.com',
-    verbose: flags.verbose,
-    dryRun: flags.dryRun,
-    requestTimeoutMs: Number(process.env.WERYAI_REQUEST_TIMEOUT_MS) || 30_000,
-    pollIntervalMs: Number(process.env.WERYAI_POLL_INTERVAL_MS) || 6_000,
-    pollTimeoutMs: Number(process.env.WERYAI_POLL_TIMEOUT_MS) || 600_000,
-  };
+  const ctx = createRuntimeContext(flags);
 
   try {
     const result = await handler(input, ctx);
@@ -32,6 +26,31 @@ export async function runScript(argv, handler, helpText) {
     process.stdout.write(JSON.stringify(output, null, 2) + '\n');
     process.exit(1);
   }
+}
+
+export function createRuntimeContext(flags) {
+  const pollIntervalEnv = Number(process.env.WERYAI_POLL_INTERVAL_MS);
+  const pollTimeoutEnv = Number(process.env.WERYAI_POLL_TIMEOUT_MS);
+  const shortTimeoutEnv = Number(process.env.WERYAI_SHORT_TASK_TIMEOUT_MS);
+  const longTimeoutEnv = Number(process.env.WERYAI_LONG_TASK_TIMEOUT_MS);
+
+  return {
+    apiKey: process.env.WERYAI_API_KEY || '',
+    baseUrl: process.env.WERYAI_BASE_URL || 'https://api.weryai.com',
+    modelsBaseUrl: process.env.WERYAI_MODELS_BASE_URL || 'https://api-growth-agent.weryai.com',
+    verbose: flags.verbose,
+    dryRun: flags.dryRun,
+    requestTimeoutMs: Number(process.env.WERYAI_REQUEST_TIMEOUT_MS) || 30_000,
+    pollIntervalMs: Number.isFinite(pollIntervalEnv) ? pollIntervalEnv : null,
+    pollTimeoutMs: Number.isFinite(pollTimeoutEnv) && pollTimeoutEnv >= 0 ? pollTimeoutEnv : 600_000,
+    pollTimeoutOverrideMs: Number.isFinite(pollTimeoutEnv) && pollTimeoutEnv >= 0 ? pollTimeoutEnv : null,
+    shortTaskTimeoutMs: Number.isFinite(shortTimeoutEnv) && shortTimeoutEnv >= 0
+      ? shortTimeoutEnv
+      : DEFAULT_SHORT_TASK_TIMEOUT_MS,
+    longTaskTimeoutMs: Number.isFinite(longTimeoutEnv) && longTimeoutEnv >= 0
+      ? longTimeoutEnv
+      : DEFAULT_LONG_TASK_TIMEOUT_MS,
+  };
 }
 
 function parseFlags(argv) {

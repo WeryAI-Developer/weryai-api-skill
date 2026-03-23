@@ -5,7 +5,7 @@ import { execute } from './lib/balance.js';
 const HELP = `Query the remaining WeryAI video balance.
 
 Usage:
-  node {baseDir}/scripts/balance-video.js
+  node scripts/balance-video.js
 
 Options:
   --verbose  Print debug info to stderr
