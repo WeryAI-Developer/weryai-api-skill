@@ -11,6 +11,13 @@ Preferred entry points:
 - `node {baseDir}/scripts/models-image.js`
 - `node {baseDir}/scripts/balance-image.js`
 
+Default execution policy:
+
+- In agent environments, prefer asynchronous two-stage execution.
+- Stage 1: run the matching `submit-*` command and return `taskId` or `batchId`.
+- Stage 2: use `node {baseDir}/scripts/status-image.js` to poll the existing task when the user wants progress or final results.
+- Use `node {baseDir}/scripts/wait-image.js` only when the user explicitly asks for one-shot submit-and-wait behavior.
+
 Route intents this way:
 
 - prompt only -> text-to-image

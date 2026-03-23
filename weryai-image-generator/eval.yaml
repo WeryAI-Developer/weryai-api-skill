@@ -8,10 +8,10 @@ skill: weryai-image-generator
 trigger_tests:
   - id: explicit-text-to-image
     should_trigger: true
-    prompt: "Use the weryai-image-generator skill to make a WeryAI text-to-image result with the default WeryAI Image 2.0 model."
+    prompt: "Use the weryai-image-generator skill to submit a WeryAI text-to-image task with the default WeryAI Image 2.0 model and return the taskId first."
   - id: explicit-image-to-image
     should_trigger: true
-    prompt: "Use WeryAI to restyle this reference image URL with image-to-image generation and wait for the final image URL."
+    prompt: "Use WeryAI to restyle this reference image URL with image-to-image generation, submit first, and poll task status instead of waiting in one command."
   - id: implicit-models
     should_trigger: true
     prompt: "Check which WeryAI image models support 9:16 and 4 output images before generating the image."
@@ -45,6 +45,6 @@ outcome_tests:
     type: llm_rubric
     rubric: |
       Trigger coverage (0-0.25): Does the skill clearly cover text-to-image, image-to-image, model lookup, and task polling?
-      Workflow clarity (0-0.25): Can a user understand when to use submit, wait, status, and models, including the default WeryAI Image 2.0 behavior?
+      Workflow clarity (0-0.25): Can a user understand that async submit plus status polling is the default in agent environments, while wait is only for explicit one-shot requests, including the default WeryAI Image 2.0 behavior?
       Constraint honesty (0-0.25): Does the skill clearly state cost, idempotency, and reference-image constraints?
       API fidelity (0-0.25): Are the documented fields and model-specific parameter rules faithful to the WeryAI image API, including default image count and aspect ratio behavior?

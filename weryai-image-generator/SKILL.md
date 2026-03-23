@@ -1,17 +1,17 @@
 ---
 name: weryai-image-generator
-description: Generate WeryAI images from text prompts or reference images through the WeryAI image APIs. Use when you need text-to-image, image-to-image, image from prompt, restyle this image, reference-image generation, model switching, dry-run payload previews, WeryAI image model checks, or image task status polling.
+description: Generate WeryAI images from text prompts or reference images through the WeryAI image APIs. Use when you need text-to-image, image-to-image, async image task submission, image task status polling, image from prompt, restyle this image, reference-image generation, model switching, dry-run payload previews, or one-shot wait only when explicitly requested.
 metadata: { "openclaw": { "emoji": "🎨", "primaryEnv": "WERYAI_API_KEY", "requires": { "env": ["WERYAI_API_KEY"], "bins": ["node"], "node": ">=18" } } }
 ---
 
 # WeryAI Image Generator
 
-Generate WeryAI images with the official base skill for text-to-image and image-to-image workflows. It defaults to **WeryAI Image 2.0** (`WERYAI_IMAGE_2_0`) with `image_number=1` and `aspect_ratio=9:16`, while still allowing the user to switch models and override image parameters when needed.
+Generate WeryAI images with the official base skill for text-to-image and image-to-image workflows. In agent environments, default to asynchronous two-stage execution: submit first, return `taskId` or `batchId`, then use `status-image.js` to poll the existing task when the user wants progress or final results. Use `wait-image.js` only when the user explicitly asks for one-shot submit-and-wait behavior.
 
 ## Example Prompts
 
-- `Make an image from this prompt with the default WeryAI model and wait for the final image URL.`
-- `Turn this reference image into a cinematic poster and keep the subject recognizable.`
+- `Submit a WeryAI text-to-image task for this prompt and give me the task ID first.`
+- `Turn this reference image into a cinematic poster, but use async submit plus status polling instead of waiting in one command.`
 - `Restyle this image with WeryAI image-to-image and show me the request payload first.`
 - `Check which WeryAI image models support 9:16 and 4 output images before generating.`
 - `Poll my WeryAI image generation task and tell me whether the images are ready yet.`
@@ -159,36 +159,28 @@ Wait for confirmation or requested edits before running a paid submission.
 
 ## Intent Routing
 
-Use `wait-image.js` as the default one-shot entry point when the user wants final image URLs.
+Use asynchronous submit plus `status-image.js` polling as the default path in agent environments.
 
 - If the user provides only `prompt`, route to text-to-image.
 - If the user provides `image` or `images`, route to image-to-image.
 - If the user already has `taskId` or `batchId`, use `status-image.js` instead of creating a new task.
 - If the user asks about supported models or parameters, run `models-image.js` before any paid submission.
+- Use `wait-image.js` only when the user explicitly asks for final image URLs in the same turn.
 
 ## Preferred Commands
 
 ```sh
-# Default: submit and wait for final image URLs
-node {baseDir}/scripts/wait-image.js \
+# Default async submit
+node {baseDir}/scripts/submit-text-image.js \
   --json '{"prompt":"A refined editorial portrait"}'
 
-# Image-to-image with a single reference image
-node {baseDir}/scripts/wait-image.js \
-  --json '{"prompt":"Turn this product shot into a cinematic ad image","image":"https://example.com/input.png"}'
+# Poll an existing task
+node {baseDir}/scripts/status-image.js --task-id <task-id>
 
-# Image-to-image with explicit images array
-node {baseDir}/scripts/wait-image.js \
-  --json '{"prompt":"Restyle this image with premium lighting","images":["https://example.com/input.png"]}'
-
-# Dry-run preview without spending credits
+# One-shot fallback only when explicitly requested
 node {baseDir}/scripts/wait-image.js \
   --json '{"prompt":"A futuristic city skyline"}' \
   --dry-run
-
-# Submit without waiting
-node {baseDir}/scripts/submit-text-image.js \
-  --json '{"prompt":"A sunset over the ocean"}'
 
 # Inspect models, poll status, or check balance
 node {baseDir}/scripts/models-image.js --mode text_to_image
@@ -204,8 +196,10 @@ node {baseDir}/scripts/balance-image.js
 3. Apply defaults: **WeryAI Image 2.0** (`WERYAI_IMAGE_2_0`), `image_number=1`, `aspect_ratio=9:16`, unless the user asks otherwise.
 4. If the user wants a custom model or non-default parameters, run `models-image.js` first when support is uncertain.
 5. Use `--dry-run` when you need to preview the final payload before a paid submission.
-6. Use `wait-image.js` when the user wants final image URLs now.
-7. Use `submit-*` only when the user explicitly wants task creation without polling.
+6. Default to two-stage execution:
+   - Stage 1: `submit-*` and report `taskId` / `batchId` with explicit submit success or failure.
+   - Stage 2: `status-image.js` polling for the existing task when the user wants progress or final results.
+7. Use `wait-image.js` only when the user explicitly wants final image URLs now.
 8. Use `status-image.js` to re-check an existing task or batch safely.
 
 ## Input Rules
@@ -243,6 +237,7 @@ The task is done when:
 - Do not assume every image model supports every optional field.
 - Do not use local file paths for reference images.
 - Do not re-run `submit` or `wait` casually because each run can create a new paid task.
+- Do not default to `wait-image.js` in agent environments for generation tasks that may block the session.
 - Do not broaden this skill into general image editing outside the documented WeryAI API surface.
 
 ## Re-run Behavior
