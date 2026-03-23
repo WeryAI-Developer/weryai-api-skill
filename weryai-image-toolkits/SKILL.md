@@ -1,6 +1,6 @@
 ---
 name: weryai-image-toolkits
-description: Use when you need WeryAI image tools for image editing and image post-processing on existing images: background removal, background change, canvas expansion, face swap, reframe, repair, text erase, translation, upscale, or image-to-prompt.
+description: "Use when you need WeryAI image tools for image editing and image post-processing on existing images: background removal, background change, canvas expansion, face swap, reframe, repair, text erase, translation, upscale, or image-to-prompt."
 metadata: { "openclaw": { "emoji": "🖼️", "primaryEnv": "WERYAI_API_KEY", "paid": true, "network_required": true, "requires": { "env": ["WERYAI_API_KEY"], "bins": ["node"], "node": ">=18" } } }
 ---
 

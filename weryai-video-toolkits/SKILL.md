@@ -1,6 +1,6 @@
 ---
 name: weryai-video-toolkits
-description: Use when you need WeryAI video tools for video editing and video post-processing on existing videos: subtitle translate, subtitle erase, watermark remove, face change, lip sync, background remove, extend, anime replace, magic style transfer, or video upscale.
+description: "Use when you need WeryAI video tools for video editing and video post-processing on existing videos: subtitle translate, subtitle erase, watermark remove, face change, lip sync, background remove, extend, anime replace, magic style transfer, or video upscale."
 metadata: { "openclaw": { "emoji": "🎞️", "primaryEnv": "WERYAI_API_KEY", "paid": true, "network_required": true, "requires": { "env": ["WERYAI_API_KEY"], "bins": ["node"], "node": ">=18" } } }
 ---
 
