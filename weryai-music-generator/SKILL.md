@@ -1,7 +1,7 @@
 ---
 name: weryai-music-generator
 description: "Generate WeryAI music, vocal songs, or instrumental tracks through the WeryAI music API. Use when the user needs music generation, song generation, instrumental generation, async music task submission, music task status polling, lyrics-aware vocal songs, reference-audio guided music, dry-run payload previews, balance checks, or one-shot wait only when explicitly requested."
-metadata: { "openclaw": { "emoji": "🎵", "primaryEnv": "WERYAI_API_KEY", "paid": true, "network_required": true, "requires": { "env": ["WERYAI_API_KEY"], "bins": ["node"], "node": ">=18" } } }
+metadata: { "openclaw": { "emoji": "🎵", "primaryEnv": "WERYAI_API_KEY", "paid": true, "network_required": true, "requires": { "env": ["WERYAI_API_KEY", "WERYAI_BASE_URL"], "bins": ["node"], "node": ">=18" } } }
 ---
 
 # WeryAI Music Generator
@@ -49,8 +49,8 @@ export WERYAI_API_KEY="your_api_key_here"
 Use one safe check before the first paid run:
 
 ```sh
-node {baseDir}/scripts/balance-music.js
-node {baseDir}/scripts/wait-music.js --json '{"type":"VOCAL_SONG","description":"A calm pop sketch","gender":"m"}' --dry-run
+node scripts/balance-music.js
+node scripts/wait-music.js --json '{"type":"VOCAL_SONG","description":"A calm pop sketch","gender":"m"}' --dry-run
 ```
 
 - `balance-music.js` confirms that the key is configured and the account is reachable.
@@ -68,6 +68,7 @@ node {baseDir}/scripts/wait-music.js --json '{"type":"VOCAL_SONG","description":
 ## Security And API Hosts
 
 - Keep `WERYAI_API_KEY` secret and never write it into the repository.
+- This skill supports directly passing local file paths. If a local file path is provided, the runtime will automatically upload the local file to the WeryAI server for processing.
 - Optional override `WERYAI_BASE_URL` defaults to `https://api.weryai.com`. Only override it with a trusted host.
 - Review `scripts/` before production use if you need higher assurance.
 
@@ -234,10 +235,10 @@ Use `wait-music.js` as the default path in agent environments to deliver final a
 
 ```sh
 # Default audio-first flow
-node {baseDir}/scripts/wait-music.js --json '{"type":"ONLY_MUSIC","description":"A calm piano piece"}'
+node scripts/wait-music.js --json '{"type":"ONLY_MUSIC","description":"A calm piano piece"}'
 
 # Query task status
-node {baseDir}/scripts/status-music.js --task-id <task-id>
+node scripts/status-music.js --task-id <task-id>
 ```
 
 ## Workflow

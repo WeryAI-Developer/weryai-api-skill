@@ -11,6 +11,7 @@ Preferred entry points:
 
 Default execution policy:
 
+
 - Prefer result-first delivery. In agent environments, use `wait-music.js` to submit and poll until final audio URLs are ready.
 - Enforce bounded polling with a maximum timeout of 10 minutes (600 seconds).
 - Use `node {baseDir}/scripts/submit-music.js` only when the user explicitly asks for async behavior or a task ID without waiting.

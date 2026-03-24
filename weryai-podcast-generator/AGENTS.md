@@ -20,6 +20,7 @@ Route intents this way:
 
 Default execution policy:
 
+
 - Prefer result-first delivery. In agent environments, use `wait.js` for end-to-end podcast generation and delivery.
 - Enforce bounded polling with a maximum timeout of 30 minutes (1800 seconds).
 

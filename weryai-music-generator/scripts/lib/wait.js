@@ -1,9 +1,9 @@
 import { createClient } from './client.js';
 import { buildPayload, validateSubmit } from './validators.js';
 import { isApiSuccess, formatApiError, formatNetworkError } from './errors.js';
-import { normalizeMusicInput } from '../../../../core/weryai-music/normalize-input.js';
-import { isRemoteUrl, resolvePublicUrlFromSource } from '../../../../core/weryai-core/upload.js';
-import { pollSingleTask } from '../../../../core/weryai-core/wait.js';
+import { normalizeMusicInput } from '../vendor/weryai-music/normalize-input.js';
+import { isRemoteUrl, resolvePublicUrlFromSource } from '../vendor/weryai-core/upload.js';
+import { pollSingleTask } from '../vendor/weryai-core/wait.js';
 
 export async function execute(input, ctx) {
   const normalizedInput = normalizeMusicInput(input);

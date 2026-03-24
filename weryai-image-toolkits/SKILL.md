@@ -1,7 +1,7 @@
 ---
 name: weryai-image-toolkits
 description: "Use when the user needs WeryAI image tools to analyze and transform existing images. Generate reusable prompts, convert and optimize visuals via background removal/change, canvas expansion, face swap, reframe, repair, text erase, translation, and upscale workflows."
-metadata: { "openclaw": { "emoji": "🖼️", "primaryEnv": "WERYAI_API_KEY", "paid": true, "network_required": true, "requires": { "env": ["WERYAI_API_KEY"], "bins": ["node"], "node": ">=18" } } }
+metadata: { "openclaw": { "emoji": "🖼️", "primaryEnv": "WERYAI_API_KEY", "paid": true, "network_required": true, "requires": { "env": ["WERYAI_API_KEY", "WERYAI_BASE_URL"], "bins": ["node"], "node": ">=18" } } }
 ---
 
 # WeryAI Image Toolkits
@@ -55,8 +55,8 @@ export WERYAI_API_KEY="your_api_key_here"
 Use one safe check before the first paid run:
 
 ```sh
-node {baseDir}/scripts/image_toolkits.js tools
-node {baseDir}/scripts/image_toolkits.js wait --tool background-remove --json '{"img_url":"https://example.com/image.jpg"}' --dry-run
+node scripts/image_toolkits.js tools
+node scripts/image_toolkits.js wait --tool background-remove --json '{"img_url":"https://example.com/image.jpg"}' --dry-run
 ```
 
 - `tools` confirms the local CLI is available and shows the supported tool registry.
@@ -72,6 +72,7 @@ node {baseDir}/scripts/image_toolkits.js wait --tool background-remove --json '{
 ## Security And API Hosts
 
 - **`WERYAI_API_KEY`**: Treat it as a secret. Configure it only in the runtime environment; never write the secret value into the skill files.
+- This skill supports directly passing local file paths. If a local file path is provided, the runtime will automatically upload the local file to the WeryAI server for processing.
 - Optional override `WERYAI_BASE_URL` defaults to `https://api.weryai.com`. Only override it with a trusted host.
 - For higher assurance, run paid jobs in a short-lived shell or isolated environment, and review `scripts/image_toolkits.js` before production use.
 
@@ -133,13 +134,13 @@ Read [references/image-tools-matrix.md](references/image-tools-matrix.md) when y
 
 ```sh
 # Remove image background
-node {baseDir}/scripts/image_toolkits.js wait --tool background-remove --json '{"img_url":"https://example.com/image.jpg"}'
+node scripts/image_toolkits.js wait --tool background-remove --json '{"img_url":"https://example.com/image.jpg"}'
 
 # Change background with a descriptive prompt
-node {baseDir}/scripts/image_toolkits.js wait --tool background-change --json '{"img_url":"https://example.com/image.jpg","prompt":"clean white studio background"}'
+node scripts/image_toolkits.js wait --tool background-change --json '{"img_url":"https://example.com/image.jpg","prompt":"clean white studio background"}'
 
 # Poll an existing task
-node {baseDir}/scripts/image_toolkits.js status --task-id <task-id>
+node scripts/image_toolkits.js status --task-id <task-id>
 ```
 
 ## Workflow

@@ -11,6 +11,7 @@ Preferred entry points:
 
 Default execution policy:
 
+
 - For async tools, default to `wait` so users receive final processed image output in the same turn.
 - Enforce bounded polling with a maximum timeout of 30 minutes (1800 seconds).
 - If timeout is reached, return the `taskId` to the user and ask if they want you to check the status again. Do NOT show the raw node status command to the user; use it internally to check the status when asked.

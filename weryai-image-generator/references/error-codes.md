@@ -20,7 +20,7 @@ Success: `status` is `200` or `0`. Non-zero/non-200 indicates an error.
 | HTTP Status | Code | Description | Action |
 |---|---|---|---|
 | 400 | `BAD_REQUEST` | Malformed request | Check request format |
-| 403 | `INVALID_API_KEY` | API key invalid or IP denied | Verify `IMAGE_GEN_API_KEY` |
+| 403 | `INVALID_API_KEY` | API key invalid or IP denied | Verify `WERYAI_API_KEY` |
 | 429 | — | Rate limited | Wait and retry |
 | 500 | `SERVER_ERR` | Server error | Retry later |
 

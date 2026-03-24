@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
-import { runScript } from '../../../core/weryai-podcast/cli.js';
-import { execute } from '../../../core/weryai-podcast/status.js';
+import { runScript } from './vendor/weryai-podcast/cli.js';
+import { execute } from './vendor/weryai-podcast/status.js';
 
 const HELP = `Usage: node {baseDir}/scripts/status.js [options]
 
@@ -14,4 +14,4 @@ Examples:
   node {baseDir}/scripts/status.js --task-id <task-id>
 `;
 
-await runScript(process.argv.slice(2), execute, HELP);
+runScript(process.argv.slice(2), execute, HELP).catch(err => { console.error(err); process.exit(1); });

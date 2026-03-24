@@ -1,7 +1,7 @@
 ---
 name: weryai-video-toolkits
 description: "Process and edit existing videos using WeryAI video toolkits. Use when the user needs to remove video backgrounds, replace backgrounds, apply anime style transfer (anime-replace), or check the status of these toolkit tasks. Features bounded wait polling for final outputs."
-metadata: { "openclaw": { "emoji": "🎞️", "primaryEnv": "WERYAI_API_KEY", "paid": true, "network_required": true, "requires": { "env": ["WERYAI_API_KEY"], "bins": ["node"], "node": ">=18" } } }
+metadata: { "openclaw": { "emoji": "🎞️", "primaryEnv": "WERYAI_API_KEY", "paid": true, "network_required": true, "requires": { "env": ["WERYAI_API_KEY", "WERYAI_BASE_URL"], "bins": ["node"], "node": ">=18" } } }
 ---
 
 # WeryAI Video Toolkits
@@ -72,6 +72,7 @@ node scripts/video_toolkits.js wait --tool background-remove --json '{"video_url
 ## Security and API hosts
 
 - **`WERYAI_API_KEY`**: Treat it as a secret. Configure it only in the runtime environment; never write the secret value into the skill files.
+- This skill supports directly passing local file paths. If a local file path is provided, the runtime will automatically upload the local file to the WeryAI server for processing.
 - Optional override `WERYAI_BASE_URL` defaults to `https://api.weryai.com`. Only override it with a trusted host.
 - For higher assurance, run paid jobs in a short-lived shell or isolated environment, and review `scripts/video_toolkits.js` before production use.
 
@@ -134,13 +135,13 @@ Read [references/video-tools-matrix.md](references/video-tools-matrix.md) when y
 
 ```sh
 # Remove background with default BLACK fill
-node {baseDir}/scripts/video_toolkits.js wait --tool background-remove --json '{"video_url":"https://example.com/video.mp4"}'
+node scripts/video_toolkits.js wait --tool background-remove --json '{"video_url":"https://example.com/video.mp4"}'
 
 # Replace or move an object in anime style
-node {baseDir}/scripts/video_toolkits.js wait --tool anime-replace --json '{"video_url":"https://example.com/video.mp4","image_url":"https://example.com/ref.jpg","type":"replace","resolution":"720p"}'
+node scripts/video_toolkits.js wait --tool anime-replace --json '{"video_url":"https://example.com/video.mp4","image_url":"https://example.com/ref.jpg","type":"replace","resolution":"720p"}'
 
 # Poll an existing task
-node {baseDir}/scripts/video_toolkits.js status --task-id <task-id>
+node scripts/video_toolkits.js status --task-id <task-id>
 ```
 
 ## Workflow

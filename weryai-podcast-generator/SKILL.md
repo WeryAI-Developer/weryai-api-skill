@@ -1,7 +1,7 @@
 ---
 name: weryai-podcast-generator
-description: "Generate, query, and deliver WeryAI podcasts through the official podcast generation API. Use when you need podcast speaker lookup, podcast text generation, podcast audio generation, full text-to-audio podcast workflows, or when the user asks for a spoken multi-speaker podcast from a topic or question."
-metadata: { "openclaw": { "emoji": "🎙️", "primaryEnv": "WERYAI_API_KEY", "paid": true, "network_required": true, "requires": { "env": ["WERYAI_API_KEY"], "bins": ["node"], "node": ">=18" } } }
+description: "Generate, query, and deliver WeryAI podcasts through the official podcast generation API. Use when the user needs podcast speaker lookup, podcast text generation, podcast audio generation, full text-to-audio podcast workflows, or when the user asks for a spoken multi-speaker podcast from a topic or question."
+metadata: { "openclaw": { "emoji": "🎙️", "primaryEnv": "WERYAI_API_KEY", "paid": true, "network_required": true, "requires": { "env": ["WERYAI_API_KEY", "WERYAI_BASE_URL"], "bins": ["node"], "node": ">=18" } } }
 ---
 
 # WeryAI Podcast Generator
@@ -40,8 +40,8 @@ Before the first paid run:
 Use one safe check before the first paid run:
 
 ```sh
-node {baseDir}/scripts/speakers.js --language en
-node {baseDir}/scripts/wait.js --json '{"query":"What is retrieval augmented generation?","speakers":["travel-girl-english","leo-9328b6d2"],"language":"en","mode":"quick"}' --dry-run
+node scripts/speakers.js --language en
+node scripts/wait.js --json '{"query":"What is retrieval augmented generation?","speakers":["travel-girl-english","leo-9328b6d2"],"language":"en","mode":"quick"}' --dry-run
 ```
 
 - `speakers.js` confirms the key is configured and the podcast voice list is reachable.
@@ -49,7 +49,8 @@ node {baseDir}/scripts/wait.js --json '{"query":"What is retrieval augmented gen
 
 ## Prerequisites
 
-- `WERYAI_API_KEY` must be set before real runs.
+- `WERYAI_API_KEY` must be set before calling the API.
+- Optional override `WERYAI_BASE_URL` defaults to `https://api.weryai.com`. Only override it with a trusted host.
 - Node.js `>=18` is required.
 - Real `submit-text`, `generate-audio`, and `wait` runs may consume WeryAI credits.
 - Paid `submit-text` and `wait` runs require explicit `speakers`; do not assume or auto-pick hidden speakers.
@@ -90,10 +91,10 @@ Use short operator-style guidance like this:
 
 ```sh
 # Full end-to-end run
-node {baseDir}/scripts/wait.js --json '{"query":"What are the breakthrough applications of artificial intelligence in healthcare?","speakers":["travel-girl-english","leo-9328b6d2"],"language":"en","mode":"quick"}'
+node scripts/wait.js --json '{"query":"What are the breakthrough applications of artificial intelligence in healthcare?","speakers":["travel-girl-english","leo-9328b6d2"],"language":"en","mode":"quick"}'
 
 # Inspect a podcast task
-node {baseDir}/scripts/status.js --task-id <task-id>
+node scripts/status.js --task-id <task-id>
 ```
 
 ## User-facing delivery requirement

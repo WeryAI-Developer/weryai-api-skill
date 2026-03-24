@@ -9,7 +9,7 @@ export async function runScript(argv, handler, helpText) {
   const input = await resolveInput(flags);
   const pollIntervalEnv = Number(process.env.WERYAI_POLL_INTERVAL_MS);
   const ctx = {
-    apiKey: process.env.WERYAI_API_KEY || process.env.IMAGE_GEN_API_KEY || '',
+    apiKey: process.env.WERYAI_API_KEY || process.env.WERYAI_API_KEY || '',
     baseUrl: process.env.WERYAI_BASE_URL || 'https://api.weryai.com',
     modelsBaseUrl: process.env.WERYAI_MODELS_BASE_URL || 'https://api-growth-agent.weryai.com',
     verbose: flags.verbose,

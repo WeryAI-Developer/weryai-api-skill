@@ -18,7 +18,7 @@ The output includes per-model metadata: supported aspect ratios, durations, reso
 
 ## Default Configuration
 
-- Default model: **Seedance 2.0** (`SEEDANCE_2_0`)
+- Default model: **Werydance 2.0** (`WERYDANCE_2_0`)
 - Default aspect_ratio: `9:16`
 - Default duration: first allowed value from model metadata (typically 5s)
 - Default resolution: `720p`

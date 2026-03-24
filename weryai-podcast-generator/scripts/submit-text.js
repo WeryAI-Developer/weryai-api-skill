@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
-import { runScript } from '../../../core/weryai-podcast/cli.js';
-import { execute } from '../../../core/weryai-podcast/submit-text.js';
+import { runScript } from './vendor/weryai-podcast/cli.js';
+import { execute } from './vendor/weryai-podcast/submit-text.js';
 
 const HELP = `Usage: node {baseDir}/scripts/submit-text.js [options]
 
@@ -16,4 +16,4 @@ Examples:
   node {baseDir}/scripts/submit-text.js --json '{"query":"Debate the pros and cons of remote work","speakers":["travel-girl-english","leo-9328b6d2"],"language":"en","mode":"debate"}' --dry-run
 `;
 
-await runScript(process.argv.slice(2), execute, HELP);
+runScript(process.argv.slice(2), execute, HELP).catch(err => { console.error(err); process.exit(1); });

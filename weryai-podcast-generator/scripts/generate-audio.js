@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
-import { runScript } from '../../../core/weryai-podcast/cli.js';
-import { execute } from '../../../core/weryai-podcast/generate-audio.js';
+import { runScript } from './vendor/weryai-podcast/cli.js';
+import { execute } from './vendor/weryai-podcast/generate-audio.js';
 
 const HELP = `Usage: node {baseDir}/scripts/generate-audio.js [options]
 
@@ -17,4 +17,4 @@ Examples:
   node {baseDir}/scripts/generate-audio.js --task-id <task-id> --json '{"scripts":[{"speakerId":"travel-girl-english","speakerName":"Mia","content":"Welcome back."}]}'
 `;
 
-await runScript(process.argv.slice(2), execute, HELP);
+runScript(process.argv.slice(2), execute, HELP).catch(err => { console.error(err); process.exit(1); });

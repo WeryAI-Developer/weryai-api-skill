@@ -1,1 +1,1 @@
-export * from '../../../core/weryai-core/normalize.js';
+export * from '../vendor/weryai-core/normalize.js';

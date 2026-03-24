@@ -1,7 +1,7 @@
 ---
 name: weryai-image-generator
 description: "Generate WeryAI images from text prompts or reference images through the WeryAI image APIs. Use when the user needs text-to-image, image-to-image, async image task submission with bounded polling to final output, status checks, image from prompt, restyle this image, reference-image generation, model switching, dry-run payload previews, or one-shot wait only when explicitly requested."
-metadata: { "openclaw": { "emoji": "🎨", "primaryEnv": "WERYAI_API_KEY", "requires": { "env": ["WERYAI_API_KEY"], "bins": ["node"], "node": ">=18" } } }
+metadata: { "openclaw": { "emoji": "🎨", "primaryEnv": "WERYAI_API_KEY", "requires": { "env": ["WERYAI_API_KEY", "WERYAI_BASE_URL", "WERYAI_MODELS_BASE_URL"], "bins": ["node"], "node": ">=18" } } }
 ---
 
 # WeryAI Image Generator
@@ -66,6 +66,7 @@ node scripts/wait-image.js --json '{"prompt":"A glowing paper lantern in mist","
 ## Security And API Hosts
 
 - Keep `WERYAI_API_KEY` secret and never write it into the repository.
+- This skill supports directly passing local file paths. If a local file path is provided, the runtime will automatically upload the local file to the WeryAI server for processing.
 - Optional overrides `WERYAI_BASE_URL` and `WERYAI_MODELS_BASE_URL` default to `https://api.weryai.com` and `https://api-growth-agent.weryai.com`. Only override them with trusted hosts.
 - Review `scripts/` before production use if you need higher assurance.
 

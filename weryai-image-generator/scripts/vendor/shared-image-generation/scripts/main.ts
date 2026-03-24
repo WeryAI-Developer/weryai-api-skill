@@ -66,9 +66,9 @@ const SKILL_LABEL = process.env.IMAGE_SKILL_LABEL?.trim() || SKILL_NAMESPACE;
 const DEFAULT_FALLBACK_MODEL = "CHATBOT_GEMINI_3_PRO_IMAGE_PREVIEW";
 
 function getApiKey(): string {
-  const k = process.env.IMAGE_GEN_API_KEY || process.env.IMAGE_GEN_API_KEY;
+  const k = process.env.WERYAI_API_KEY || process.env.WERYAI_API_KEY;
   if (!k?.trim()) {
-    console.error("Missing IMAGE_GEN_API_KEY. Set IMAGE_GEN_API_KEY or WERYAI_API_KEY in the runtime environment before using this package.");
+    console.error("Missing WERYAI_API_KEY. Set WERYAI_API_KEY or WERYAI_API_KEY in the runtime environment before using this package.");
 process.exit(1);
   }
   return k.trim();
@@ -546,7 +546,7 @@ Options:
   --json                  JSON summary / batch report
   -h, --help
 
-Env: IMAGE_GEN_API_KEY (preferred); IMAGE_GEN_API_KEY compatible; IMAGE_GEN_DEFAULT_MODEL optional; or EXTEND / --model
+Env: WERYAI_API_KEY (preferred); WERYAI_API_KEY compatible; IMAGE_GEN_DEFAULT_MODEL optional; or EXTEND / --model
 `);
 }
 
