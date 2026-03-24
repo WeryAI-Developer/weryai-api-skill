@@ -1,24 +1,24 @@
 ---
 name: weryai-image-generator
-description: Generate WeryAI images from text prompts or reference images through the WeryAI image APIs. Use when you need text-to-image, image-to-image, async image task submission, image task status polling, image from prompt, restyle this image, reference-image generation, model switching, dry-run payload previews, or one-shot wait only when explicitly requested.
+description: "Generate WeryAI images from text prompts or reference images through the WeryAI image APIs. Use when the user needs text-to-image, image-to-image, async image task submission with bounded polling to final output, status checks, image from prompt, restyle this image, reference-image generation, model switching, dry-run payload previews, or one-shot wait only when explicitly requested."
 metadata: { "openclaw": { "emoji": "🎨", "primaryEnv": "WERYAI_API_KEY", "requires": { "env": ["WERYAI_API_KEY"], "bins": ["node"], "node": ">=18" } } }
 ---
 
 # WeryAI Image Generator
 
-Generate WeryAI images with the official base skill for text-to-image and image-to-image workflows. In agent environments, default to asynchronous two-stage execution: submit first, return `taskId` or `batchId`, then use `status-image.js` to poll the existing task when the user wants progress or final results. Use `wait-image.js` only when the user explicitly asks for one-shot submit-and-wait behavior.
+Generate WeryAI images with the official base skill for text-to-image and image-to-image workflows. In agent environments, default to an image-first flow: submit the task, then poll status until final images are ready or the maximum timeout of 5 minutes (300 seconds) is reached. Do not run unbounded polling loops. Treat `taskId` or `batchId` as tracking data, not the endpoint, and only surface them as the primary output when the user explicitly wants IDs first or timeout is reached before completion. Use `wait-image.js` only when the user explicitly asks for one-shot submit-and-wait behavior.
 
 ## Example Prompts
 
-- `Submit a WeryAI text-to-image task for this prompt and give me the task ID first.`
-- `Turn this reference image into a cinematic poster, but use async submit plus status polling instead of waiting in one command.`
-- `Restyle this image with WeryAI image-to-image and show me the request payload first.`
+- `Generate this image and keep checking until you can show me the final image, or stop when the 5-minute timeout is reached.`
+- `Turn this reference image into a cinematic poster, and check the result only if I ask for status.`
+- `Restyle this image with WeryAI image-to-image and show me the final image when it is ready.`
 - `Check which WeryAI image models support 9:16 and 4 output images before generating.`
-- `Poll my WeryAI image generation task and tell me whether the images are ready yet.`
+- `Check my WeryAI image generation task status and tell me whether the images are ready yet.`
 
 ## Quick Summary
 
-- Main jobs: `text-to-image`, `image-to-image`, `image from prompt`, `restyle this image`, `task status`
+- Main jobs: `text-to-image`, `image-to-image`, `image from prompt`, `restyle this image`, `task status`, final image delivery
 - Default model: **WeryAI Image 2.0** (`WERYAI_IMAGE_2_0`)
 - Default parameters: `image_number=1`, `aspect_ratio=9:16`
 - Main trust signals: dry-run support, model capability lookup, paid-run warning, media-source validation with auto upload for local references
@@ -99,6 +99,7 @@ Guide the user progressively instead of explaining every parameter up front.
 
 Use short operator-style guidance like this:
 
+- General help: When the user asks "how to use this skill", DO NOT paste raw shell commands. Instead, explain the capabilities in natural language and give 2-3 prompt examples.
 - Default run:
   `I can start with the default setup: WeryAI Image 2.0, 1 image, 9:16. If you want, I can also switch the model or adjust the image count, aspect ratio, or resolution before submission.`
 - Model switching:
@@ -159,34 +160,25 @@ Wait for confirmation or requested edits before running a paid submission.
 
 ## Intent Routing
 
-Use asynchronous submit plus `status-image.js` polling as the default path in agent environments.
+Use image-first submit plus bounded status polling as the default path in agent environments.
 
 - If the user provides only `prompt`, route to text-to-image.
 - If the user provides `image` or `images`, route to image-to-image.
 - If the user already has `taskId` or `batchId`, use `status-image.js` instead of creating a new task.
 - If the user asks about supported models or parameters, run `models-image.js` before any paid submission.
-- Use `wait-image.js` only when the user explicitly asks for final image URLs in the same turn.
+- After `submit-*`, run `status-image.js` polling by default until final images are ready or the 5-minute timeout is reached.
+- Use `wait-image.js` only when the user explicitly asks for a blocking one-shot result.
+- Do not perform unbounded status polling; enforce the 5-minute timeout ceiling for default polling.
+- If the task is still processing, keep the user informed, but do not treat the task ID as the final deliverable.
 
 ## Preferred Commands
 
 ```sh
 # Default async submit
-node {baseDir}/scripts/submit-text-image.js \
-  --json '{"prompt":"A refined editorial portrait"}'
+node {baseDir}/scripts/submit-text-image.js --json '{"prompt":"A refined editorial portrait"}'
 
 # Poll an existing task
 node {baseDir}/scripts/status-image.js --task-id <task-id>
-
-# One-shot fallback only when explicitly requested
-node {baseDir}/scripts/wait-image.js \
-  --json '{"prompt":"A futuristic city skyline"}' \
-  --dry-run
-
-# Inspect models, poll status, or check balance
-node {baseDir}/scripts/models-image.js --mode text_to_image
-node {baseDir}/scripts/models-image.js --mode image_to_image
-node {baseDir}/scripts/status-image.js --task-id <task-id>
-node {baseDir}/scripts/balance-image.js
 ```
 
 ## Workflow
@@ -196,10 +188,11 @@ node {baseDir}/scripts/balance-image.js
 3. Apply defaults: **WeryAI Image 2.0** (`WERYAI_IMAGE_2_0`), `image_number=1`, `aspect_ratio=9:16`, unless the user asks otherwise.
 4. If the user wants a custom model or non-default parameters, run `models-image.js` first when support is uncertain.
 5. Use `--dry-run` when you need to preview the final payload before a paid submission.
-6. Default to two-stage execution:
-   - Stage 1: `submit-*` and report `taskId` / `batchId` with explicit submit success or failure.
-   - Stage 2: `status-image.js` polling for the existing task when the user wants progress or final results.
-7. Use `wait-image.js` only when the user explicitly wants final image URLs now.
+6. Default to image-first execution:
+   - Stage 1: `submit-*`.
+   - Stage 2: run `status-image.js` polling until images are ready or the 5-minute timeout is reached.
+   - Stage 3: if timeout is reached, return `taskId`/`batchId` with a timeout note and a follow-up status command.
+7. Do not treat status lookup as an unbounded loop; always enforce timeout ceilings.
 8. Use `status-image.js` to re-check an existing task or batch safely.
 
 ## Input Rules
@@ -220,6 +213,13 @@ All commands print JSON to stdout. Successful result objects can include:
 - `balance`
 - `errorCode`, `errorMessage`
 
+User-facing delivery requirement:
+
+- If image URLs are available, return at least one user-visible image link (for example `[Image](https://...)`) or inline image rendering when supported. If multiple images are generated, render all of them using markdown image syntax consecutively.
+- Alongside image output, include key generation parameters when available: `model`, `aspect_ratio`, `image_number`, and `resolution`.
+- Do not use `taskId` / `batchId` as the sole deliverable unless the user explicitly requested IDs first.
+- If timeout is reached before completion, return the `taskId` to the user and ask if they want you to check the status again. Do NOT show the raw node status command to the user; use it internally.
+
 See [references/error-codes.md](references/error-codes.md) for common failure classes and recovery hints.
 
 ## Definition Of Done
@@ -227,10 +227,11 @@ See [references/error-codes.md](references/error-codes.md) for common failure cl
 The task is done when:
 
 - local validation passes without CLI-side errors,
-- `submit-*` returns a valid task ID or batch ID,
+- the user can see at least one generated image or a usable download URL,
 - or `wait-image.js` reaches a terminal result with at least one image URL,
-- or `status-image.js` returns a clear in-progress or terminal state,
+- or `status-image.js` polling reaches timeout and returns a clear in-progress status with task tracking data,
 - and the output makes it explicit whether image URLs are present.
+- When only task tracking data is available due to timeout, the reply must include the timeout reason and an explicit follow-up status command.
 
 ## Constraints
 
@@ -243,7 +244,7 @@ The task is done when:
 ## Re-run Behavior
 
 - `submit-text-image.js` and `submit-image-to-image.js` are not idempotent; re-running them can create new paid tasks.
-- `wait-image.js` is not idempotent for the same reason: it submits first, then polls.
+- `wait-image.js` is not idempotent for the same reason: it submits first, then polls until a terminal result or timeout.
 - `status-image.js`, `models-image.js`, and `balance-image.js` are safe to re-run.
 
 ## References

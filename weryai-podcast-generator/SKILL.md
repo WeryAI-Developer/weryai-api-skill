@@ -1,6 +1,6 @@
 ---
 name: weryai-podcast-generator
-description: Generate, query, and deliver WeryAI podcasts through the official podcast generation API. Use when you need podcast speaker lookup, podcast text generation, podcast audio generation, full text-to-audio podcast workflows, or when the user asks for a spoken multi-speaker podcast from a topic or question.
+description: "Generate, query, and deliver WeryAI podcasts through the official podcast generation API. Use when you need podcast speaker lookup, podcast text generation, podcast audio generation, full text-to-audio podcast workflows, or when the user asks for a spoken multi-speaker podcast from a topic or question."
 metadata: { "openclaw": { "emoji": "🎙️", "primaryEnv": "WERYAI_API_KEY", "paid": true, "network_required": true, "requires": { "env": ["WERYAI_API_KEY"], "bins": ["node"], "node": ">=18" } } }
 ---
 
@@ -72,56 +72,44 @@ Important rule:
 
 - `debate` mode requires exactly 2 speakers.
 
+### Recommended guidance pattern
+
+Use short operator-style guidance like this:
+
+- General help: When the user asks "how to use this skill", DO NOT paste raw shell commands. Instead, explain the capabilities in natural language and give 2-3 prompt examples.
+
 ## Workflow
 
 1. If the user has not chosen speakers yet, run `speakers.js --language <code>` first.
 2. Confirm the final `query`, `speakers`, `language`, and `mode`.
 3. Prefer `wait.js` for end-to-end delivery.
-4. `wait.js` submits podcast text generation, polls until `content_status=text-success`, triggers audio generation, then polls until `content_status=audio-success`.
+4. `wait.js` submits podcast text generation, polls until `content_status=text-success`, triggers audio generation, then polls until `content_status=audio-success`. Enforce bounded polling with a maximum timeout of 30 minutes (1800 seconds); do not run unbounded loops.
 5. Return the final audio URLs and task state.
 
 ## Commands
 
 ```sh
-# List available podcast speakers
-node {baseDir}/scripts/speakers.js --language en
-
-# Submit podcast text generation
-node {baseDir}/scripts/submit-text.js --json '{
-  "query":"What are the best ways to reduce onboarding friction for new engineers?",
-  "speakers":["travel-girl-english","leo-9328b6d2"],
-  "language":"en",
-  "mode":"quick"
-}'
-
-# Trigger podcast audio for an existing text task
-node {baseDir}/scripts/generate-audio.js --task-id <task-id>
-
-# Trigger podcast audio with custom scripts
-node {baseDir}/scripts/generate-audio.js --task-id <task-id> --json '{
-  "scripts":[
-    {"speakerId":"travel-girl-english","speakerName":"Mia","content":"Welcome to the show."},
-    {"speakerId":"leo-9328b6d2","speakerName":"Leo","content":"Let us get into the topic."}
-  ]
-}'
+# Full end-to-end run
+node {baseDir}/scripts/wait.js --json '{"query":"What are the breakthrough applications of artificial intelligence in healthcare?","speakers":["travel-girl-english","leo-9328b6d2"],"language":"en","mode":"quick"}'
 
 # Inspect a podcast task
 node {baseDir}/scripts/status.js --task-id <task-id>
-
-# Full end-to-end run
-node {baseDir}/scripts/wait.js --json '{
-  "query":"What are the breakthrough applications of artificial intelligence in healthcare?",
-  "speakers":["travel-girl-english","leo-9328b6d2"],
-  "language":"en",
-  "mode":"quick"
-}'
 ```
+
+## User-facing delivery requirement
+
+- Always render the final `audios` URLs directly to the user as clickable Markdown links. Do not just output the `taskId`.
+- If multiple audio tracks are generated, render all of them using markdown links consecutively.
+- Include a brief summary of the generation parameters used (e.g. from `requestSummary` or your initial choices).
+- If timeout is reached before completion, return the `taskId` to the user and ask if they want you to check the status again. Do NOT show the raw node status command to the user; use it internally to check the status when asked.
 
 ## Definition of Done
 
 - `speakers.js` returns at least one speaker for the requested language, or a clear API failure.
 - `submit-text.js` returns a real `taskId`.
-- `wait.js` reaches `content_status=audio-success` and returns final audio URLs, or a clear failure with task state and next step.
+- `wait.js` reaches `content_status=audio-success` and returns user-visible final audio URLs,
+- or `wait.js` reaches timeout and returns the `taskId` plus an offer to check status again later,
+- or a clear failure with task state and next step.
 
 ## Re-run Behavior
 

@@ -17,6 +17,12 @@ trigger_tests:
   - id: image-to-prompt
     should_trigger: true
     prompt: "Turn this image into a reusable prompt with WeryAI image tools."
+  - id: async-bounded-wait
+    should_trigger: true
+    prompt: "Use WeryAI image toolkits to process this image and wait for the final result, but stop if the 5-minute timeout is reached."
+  - id: negative-unbounded-polling
+    should_trigger: false
+    prompt: "Use WeryAI image toolkits and poll forever with no timeout limit."
   - id: negative-control
     should_trigger: false
     prompt: "Generate a brand-new poster from a text prompt."
@@ -35,5 +41,8 @@ outcome_tests:
       - route requests to the correct WeryAI image tool,
       - explain missing required parameters tool by tool,
       - support the synchronous image-to-prompt path correctly,
+      - default async tools to bounded wait with a 5-minute timeout ceiling,
+      - return timeout fallbacks with task ID and offer to check status again (without showing raw command to user),
+      - include user-visible image delivery and key parameter summary when available,
       - align API key guidance with the repository's other WeryAI image/video skills,
       - support safe dry-run previews before paid execution.

@@ -1,6 +1,6 @@
 ---
 name: weryai-video-toolkits
-description: "Use when you need WeryAI video tools for video editing and video post-processing on existing videos: subtitle translate, subtitle erase, watermark remove, face change, lip sync, background remove, extend, anime replace, magic style transfer, or video upscale."
+description: "Process and edit existing videos using WeryAI video toolkits. Use when the user needs to remove video backgrounds, replace backgrounds, apply anime style transfer (anime-replace), or check the status of these toolkit tasks. Features bounded wait polling for final outputs."
 metadata: { "openclaw": { "emoji": "🎞️", "primaryEnv": "WERYAI_API_KEY", "paid": true, "network_required": true, "requires": { "env": ["WERYAI_API_KEY"], "bins": ["node"], "node": ">=18" } } }
 ---
 
@@ -96,6 +96,12 @@ If the user asks for text-to-video or image-to-video generation from scratch, us
 
 Guide the user progressively. Ask only for the smallest missing set of parameters required for the selected tool.
 
+### Recommended guidance pattern
+
+Use short operator-style guidance like this:
+
+- General help: When the user asks "how to use this skill", DO NOT paste raw shell commands. Instead, explain the capabilities in natural language and give 2-3 prompt examples.
+
 ### Defaults you may apply safely
 
 - `anime-replace`: `type=replace`, `resolution=720p`
@@ -127,37 +133,14 @@ Read [references/video-tools-matrix.md](references/video-tools-matrix.md) when y
 ## Preferred Commands
 
 ```sh
-# List supported tools and defaults
-node scripts/video_toolkits.js tools
-
 # Remove background with default BLACK fill
-node scripts/video_toolkits.js wait \
-  --tool background-remove \
-  --json '{"video_url":"https://example.com/video.mp4"}'
+node {baseDir}/scripts/video_toolkits.js wait --tool background-remove --json '{"video_url":"https://example.com/video.mp4"}'
 
 # Replace or move an object in anime style
-node scripts/video_toolkits.js wait \
-  --tool anime-replace \
-  --json '{"video_url":"https://example.com/video.mp4","image_url":"https://example.com/ref.jpg","type":"replace","resolution":"720p"}'
-
-# Extend a clip
-node scripts/video_toolkits.js wait \
-  --tool extend \
-  --json '{"video_url":"https://example.com/video.mp4","prompt":"Continue the motion naturally for 5 seconds","style":"anime","duration":5,"resolution":"720p"}'
-
-# Translate subtitles
-node scripts/video_toolkits.js wait \
-  --tool subtitle-translate \
-  --json '{"video_url":"https://example.com/video.mp4","target_language":"en"}'
-
-# Dry-run preview without spending credits
-node scripts/video_toolkits.js wait \
-  --tool upscaler \
-  --json '{"video_url":"https://example.com/video.mp4","resolution":"1080p"}' \
-  --dry-run
+node {baseDir}/scripts/video_toolkits.js wait --tool anime-replace --json '{"video_url":"https://example.com/video.mp4","image_url":"https://example.com/ref.jpg","type":"replace","resolution":"720p"}'
 
 # Poll an existing task
-node scripts/video_toolkits.js status --task-id <task-id>
+node {baseDir}/scripts/video_toolkits.js status --task-id <task-id>
 ```
 
 ## Workflow
@@ -168,9 +151,11 @@ node scripts/video_toolkits.js status --task-id <task-id>
 4. Apply supported defaults where safe.
 5. Show the final tool, parameters, and URLs before the paid run if the request is ambiguous or expensive.
 6. Use `--dry-run` when you need to verify the payload locally first.
-7. Use `wait` when the user wants the final processed video URL now.
-8. Use `submit` only when the user explicitly wants task creation without polling.
-9. Use `status` when the user already has a `task_id`.
+7. Use `wait` by default to deliver final processed video URLs in the same turn.
+8. Enforce bounded polling with a maximum timeout of 30 minutes (1800 seconds); do not run unbounded loops.
+9. If timeout is reached, return the `taskId` to the user and ask if they want you to check the status again. Do NOT show the raw node status command to the user; use it internally to check the status when asked.
+10. Use `submit` only when the user explicitly wants task creation without polling.
+11. Use `status` when the user already has a `task_id`.
 
 ## Input Rules
 
@@ -187,9 +172,15 @@ All commands print JSON to stdout. Successful results can include:
 - `taskId`, `taskIds`, `batchId`
 - `taskStatus`
 - `videos`
+- `requestSummary`
 - `errorCode`, `errorMessage`
 
-## Definition of done
+User-facing delivery requirement:
+
+- If video URLs are available, return at least one playable Markdown link (for example `[Video](https://...)`). If multiple videos are generated, render all of them using markdown links consecutively.
+- Alongside video output, include key parameters when available: `tool`, `style`, `duration`, `resolution`, `type`, `target_language`.
+- Do not use `taskId` as the sole deliverable unless the user explicitly requested task creation without waiting.
+- If timeout is reached before completion, return the `taskId` to the user and ask if they want you to check the status again. Do NOT show the raw node status command to the user; use it internally to check the status when asked.
 
 The task is done when:
 

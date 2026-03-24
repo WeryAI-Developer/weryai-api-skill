@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
-import { runScript } from './vendor/weryai-podcast/cli.js';
-import { execute } from './vendor/weryai-podcast/submit-text.js';
+import { runScript } from '../../../core/weryai-podcast/cli.js';
+import { execute } from '../../../core/weryai-podcast/submit-text.js';
 
 const HELP = `Usage: node {baseDir}/scripts/submit-text.js [options]
 

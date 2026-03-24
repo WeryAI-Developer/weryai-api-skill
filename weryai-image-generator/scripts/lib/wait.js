@@ -2,10 +2,10 @@ import { createClient, log } from './client.js';
 import { formatApiError, formatNetworkError, isApiSuccess } from './errors.js';
 import { buildBody, fetchModelRegistry, lookupModel, validateWithModel } from './model-registry.js';
 import { DEFAULT_MODEL, FALLBACK_DEFAULTS } from './models.js';
-import { detectImageMode, normalizeImageInput } from '../vendor/weryai-image/normalize-input.js';
-import { collectLocalUploadPreview, resolveImageUploadSources, validateLocalImageSources } from '../vendor/weryai-image/upload.js';
+import { detectImageMode, normalizeImageInput } from '../../../../core/weryai-image/normalize-input.js';
+import { collectLocalUploadPreview, resolveImageUploadSources, validateLocalImageSources } from '../../../../core/weryai-image/upload.js';
 import { validateSubmitImage, validateSubmitText } from './validators.js';
-import { pollSubmittedTasks } from '../vendor/weryai-core/wait.js';
+import { pollSubmittedTasks } from '../../../../core/weryai-core/wait.js';
 
 export async function execute(input, ctx) {
   const normalizedInput = normalizeImageInput(input);
@@ -84,7 +84,7 @@ export async function execute(input, ctx) {
     return { ok: false, phase: 'failed', errorCode: 'PROTOCOL', errorMessage: 'API returned success but no task_ids.' };
   }
 
-  return pollSubmittedTasks(client, {
+  const polled = await pollSubmittedTasks(client, {
     batchId,
     taskIds,
     ctx,
@@ -93,6 +93,10 @@ export async function execute(input, ctx) {
     outputLabel: 'image',
     allowBatch: true,
   });
+  return {
+    ...polled,
+    requestSummary: buildRequestSummary(resolvedBody),
+  };
 }
 
 function buildFallbackBody(input, model, isImageToImage) {
@@ -108,6 +112,15 @@ function buildFallbackBody(input, model, isImageToImage) {
   }
   if (input.resolution) body.resolution = input.resolution;
   return body;
+}
+
+function buildRequestSummary(body) {
+  return {
+    model: body?.model ?? null,
+    aspectRatio: body?.aspect_ratio ?? null,
+    imageNumber: body?.image_number ?? null,
+    resolution: body?.resolution ?? null,
+  };
 }
 
 export default execute;

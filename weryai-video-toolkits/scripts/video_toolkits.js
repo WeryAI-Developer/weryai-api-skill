@@ -19,7 +19,7 @@ const { fileURLToPath } = require("node:url");
 const BASE_URL = (process.env.WERYAI_BASE_URL || "https://api.weryai.com").replace(/\/$/, "");
 const UPLOAD_API_PATH = "/v1/generation/upload-file";
 const POLL_INTERVAL_MS = Number(process.env.WERYAI_POLL_INTERVAL_MS || 6000);
-const POLL_TIMEOUT_MS = Number(process.env.WERYAI_POLL_TIMEOUT_MS || 600000);
+const POLL_TIMEOUT_MS = Number(process.env.WERYAI_POLL_TIMEOUT_MS || 1800000);
 
 const STATUS_MAP = {
   waiting: "waiting",
@@ -544,10 +544,23 @@ async function submitTool(toolId, payload, apiKey) {
     taskStatus: null,
     videos: null,
     errorTitle: null,
+    requestSummary: buildRequestSummary(payload),
     errorCode: null,
     errorCategory: null,
     retryable: null,
     errorMessage: null,
+  };
+}
+
+function buildRequestSummary(payload) {
+  return {
+    style: payload?.style ?? null,
+    duration: payload?.duration ?? null,
+    resolution: payload?.resolution ?? null,
+    type: payload?.type ?? null,
+    background_color: payload?.background_color ?? null,
+    target_language: payload?.target_language ?? null,
+    video_style: payload?.video_style ?? null,
   };
 }
 
@@ -765,7 +778,13 @@ async function main() {
   }
 
   if (args.command === "submit") {
-    print(submitResult, true);
+    print({
+      ...submitResult,
+      requestSummary: {
+        ...submitResult.requestSummary,
+        tool: toolId,
+      },
+    }, true);
     return;
   }
 
@@ -775,6 +794,13 @@ async function main() {
     tool: toolId,
     batchId: submitResult.batchId,
     taskIds: submitResult.taskIds,
+    requestSummary: {
+      ...submitResult.requestSummary,
+      tool: toolId,
+    },
+    nextStatusCommand: waitResult.errorCode === "TIMEOUT"
+      ? `node scripts/video_toolkits.js status --task-id ${submitResult.taskId}`
+      : null,
   }, true);
   if (!waitResult.ok) process.exitCode = 1;
 }

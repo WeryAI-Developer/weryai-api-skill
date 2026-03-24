@@ -19,7 +19,7 @@ const { fileURLToPath } = require("node:url");
 const BASE_URL = (process.env.WERYAI_BASE_URL || "https://api.weryai.com").replace(/\/$/, "");
 const UPLOAD_API_PATH = "/v1/generation/upload-file";
 const POLL_INTERVAL_MS = Number(process.env.WERYAI_POLL_INTERVAL_MS || 6000);
-const POLL_TIMEOUT_MS = Number(process.env.WERYAI_POLL_TIMEOUT_MS || 600000);
+const POLL_TIMEOUT_MS = Number(process.env.WERYAI_POLL_TIMEOUT_MS || 300000);
 
 const STATUS_MAP = {
   waiting: "waiting",
@@ -580,7 +580,10 @@ async function resolvePayloadMediaSources(toolId, payload, apiKey) {
 }
 
 async function httpJson(method, url, body, apiKey) {
-  const headers = { "Content-Type": "application/json" };
+  const headers = {
+    "Content-Type": "application/json; charset=utf-8",
+    Accept: "application/json; charset=utf-8",
+  };
   if (apiKey) headers.Authorization = `Bearer ${apiKey}`;
 
   const controller = new AbortController();
@@ -733,6 +736,7 @@ async function submitTool(toolId, payload, apiKey) {
       prompt: res.data?.prompt ?? null,
       cost_mill: res.data?.cost_mill ?? null,
       images: null,
+      requestSummary: buildRequestSummary(payload),
       errorCode: null,
       errorMessage: null,
     };
@@ -750,8 +754,19 @@ async function submitTool(toolId, payload, apiKey) {
     taskId: taskIds[0] ?? data.task_id ?? null,
     taskStatus: data.task_status ?? null,
     images: null,
+    requestSummary: buildRequestSummary(payload),
     errorCode: null,
     errorMessage: null,
+  };
+}
+
+function buildRequestSummary(payload) {
+  return {
+    model: payload?.model ?? null,
+    aspectRatio: payload?.aspect_ratio ?? null,
+    imageNumber: payload?.image_number ?? null,
+    resolution: payload?.resolution ?? null,
+    tool: null,
   };
 }
 
@@ -797,6 +812,7 @@ async function waitForTask(taskId, apiKey) {
     errorCategory: "timeout",
     retryable: true,
     errorMessage: `Poll timeout after ${Math.floor(POLL_TIMEOUT_MS / 1000)}s.`,
+    timeoutSeconds: Math.floor(POLL_TIMEOUT_MS / 1000),
   };
 }
 
@@ -959,7 +975,13 @@ async function main() {
   }
 
   if (args.command === "submit" || TOOLS[toolId].sync) {
-    print(submitResult);
+    print({
+      ...submitResult,
+      requestSummary: {
+        ...submitResult.requestSummary,
+        tool: toolId,
+      },
+    });
     return;
   }
 
@@ -969,6 +991,13 @@ async function main() {
     tool: toolId,
     batchId: submitResult.batchId,
     taskIds: submitResult.taskIds,
+    requestSummary: {
+      ...submitResult.requestSummary,
+      tool: toolId,
+    },
+    nextStatusCommand: waitResult.errorCode === "TIMEOUT"
+      ? `node {baseDir}/scripts/image_toolkits.js status --task-id ${submitResult.taskId}`
+      : null,
   });
   if (!waitResult.ok) process.exitCode = 1;
 }

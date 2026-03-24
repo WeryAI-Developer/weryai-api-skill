@@ -1,1 +1,1 @@
-export { execute, default } from '../vendor/weryai-video/wait.js';
+export { execute, default } from '../../../../../core/weryai-video/wait.js';

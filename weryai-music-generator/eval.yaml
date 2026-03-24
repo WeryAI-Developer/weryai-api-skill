@@ -8,10 +8,13 @@ skill: weryai-music-generator
 trigger_tests:
   - id: explicit-vocal-song
     should_trigger: true
-    prompt: "Use the weryai-music-generator skill to submit a vocal song generation task with custom lyrics."
+    prompt: "Use the weryai-music-generator skill to submit a vocal song generation task with custom lyrics and wait until it is ready."
   - id: explicit-instrumental
     should_trigger: true
     prompt: "Use WeryAI to generate instrumental music only and preview the request payload before spending credits."
+  - id: explicit-submit-async
+    should_trigger: true
+    prompt: "Submit a music generation task and give me the taskId first without waiting."
   - id: structured-option-inputs
     should_trigger: true
     prompt: "Generate a WeryAI vocal song with pop genre, warm emotion, piano instrumentation, and female timbre."
@@ -20,7 +23,10 @@ trigger_tests:
     prompt: "Check my WeryAI music task status and tell me whether the audio, lyrics, and cover are ready."
   - id: implicit-reference-audio
     should_trigger: true
-    prompt: "Generate a song from this style brief and reference audio URL, then wait for the final music result."
+    prompt: "Generate a song from this style brief and reference audio URL, and wait for the final results."
+  - id: negative-unbounded-polling
+    should_trigger: false
+    prompt: "Run wait-music.js with an infinite timeout loop."
   - id: negative-non-music
     should_trigger: false
     prompt: "Write a blog post about songwriting trends without calling any music generation API."
@@ -44,6 +50,6 @@ outcome_tests:
     type: llm_rubric
     rubric: |
       Trigger coverage (0-0.25): Does the skill clearly cover songs, instrumentals, lyrics, reference audio, balance checks, and task polling?
-      Workflow clarity (0-0.25): Can a user understand when to use submit, wait, status, and balance, including the default vocal-song behavior?
+      Workflow clarity (0-0.25): Can a user understand that wait-music.js is the default in agent environments for result-first delivery, with a bounded 10-minute timeout?
       Constraint honesty (0-0.25): Does the skill clearly state cost, idempotency, and non-goals?
-      API fidelity (0-0.25): Are the documented fields and mode-specific rules faithful to the WeryAI music API without inventing unsupported model discovery, while correctly documenting genre, emotion, instrument, and timbre normalization?
+      API fidelity & delivery (0-0.25): Are the documented fields faithful to the WeryAI music API, and does the skill enforce user-visible audio delivery, multiple-audio markdown formatting, and timeout fallbacks that offer to check status without exposing raw node commands?

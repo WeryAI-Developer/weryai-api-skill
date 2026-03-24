@@ -1,6 +1,6 @@
 ---
 name: weryai-image-toolkits
-description: "Use when you need WeryAI image tools for image editing and image post-processing on existing images: background removal, background change, canvas expansion, face swap, reframe, repair, text erase, translation, upscale, or image-to-prompt."
+description: "Use when the user needs WeryAI image tools to analyze and transform existing images. Generate reusable prompts, convert and optimize visuals via background removal/change, canvas expansion, face swap, reframe, repair, text erase, translation, and upscale workflows."
 metadata: { "openclaw": { "emoji": "🖼️", "primaryEnv": "WERYAI_API_KEY", "paid": true, "network_required": true, "requires": { "env": ["WERYAI_API_KEY"], "bins": ["node"], "node": ">=18" } } }
 ---
 
@@ -96,6 +96,12 @@ If the user asks for text-to-image or image-to-image generation from scratch, us
 
 Guide the user progressively. Ask only for the smallest missing set of parameters required for the selected tool.
 
+### Recommended guidance pattern
+
+Use short operator-style guidance like this:
+
+- General help: When the user asks "how to use this skill", DO NOT paste raw shell commands. Instead, explain the capabilities in natural language and give 2-3 prompt examples.
+
 ### Defaults you may apply safely
 
 - `translate`: `type=image`
@@ -126,34 +132,11 @@ Read [references/image-tools-matrix.md](references/image-tools-matrix.md) when y
 ## Preferred Commands
 
 ```sh
-# List supported tools and defaults
-node {baseDir}/scripts/image_toolkits.js tools
-
 # Remove image background
-node {baseDir}/scripts/image_toolkits.js wait \
-  --tool background-remove \
-  --json '{"img_url":"https://example.com/image.jpg"}'
+node {baseDir}/scripts/image_toolkits.js wait --tool background-remove --json '{"img_url":"https://example.com/image.jpg"}'
 
 # Change background with a descriptive prompt
-node {baseDir}/scripts/image_toolkits.js wait \
-  --tool background-change \
-  --json '{"img_url":"https://example.com/image.jpg","prompt":"clean white studio background"}'
-
-# Translate text inside an image
-node {baseDir}/scripts/image_toolkits.js wait \
-  --tool translate \
-  --json '{"img_url":"https://example.com/poster.jpg","target_lang":"en","type":"image"}'
-
-# Analyze image into a prompt (synchronous)
-node {baseDir}/scripts/image_toolkits.js submit \
-  --tool image-to-prompt \
-  --json '{"img_url":"https://example.com/image.jpg","image_size":512,"language":"en"}'
-
-# Dry-run preview without spending credits
-node {baseDir}/scripts/image_toolkits.js wait \
-  --tool reframe \
-  --json '{"img_url":"https://example.com/image.jpg","aspect_ratio":"16:9"}' \
-  --dry-run
+node {baseDir}/scripts/image_toolkits.js wait --tool background-change --json '{"img_url":"https://example.com/image.jpg","prompt":"clean white studio background"}'
 
 # Poll an existing task
 node {baseDir}/scripts/image_toolkits.js status --task-id <task-id>
@@ -167,9 +150,11 @@ node {baseDir}/scripts/image_toolkits.js status --task-id <task-id>
 4. Apply supported defaults where safe.
 5. Show the final tool, parameters, and URLs before the paid run if the request is ambiguous or expensive.
 6. Use `--dry-run` when you need to verify the payload locally first.
-7. Use `wait` when the user wants the final processed image URL now.
-8. Use `submit` for synchronous `image-to-prompt` or when the user explicitly wants task creation without polling.
-9. Use `status` when the user already has a `task_id`.
+7. For async tools, use `wait` by default to deliver final processed image URLs in the same turn.
+8. Enforce bounded polling with a maximum timeout of 5 minutes (300 seconds); do not run unbounded loops.
+9. If timeout is reached, return the `taskId` to the user and ask if they want you to check the status again. Do NOT show the raw node status command to the user; use it internally.
+10. Use `submit` for synchronous `image-to-prompt` or when the user explicitly wants task creation without polling.
+11. Use `status` when the user already has a `task_id`.
 
 ## Input Rules
 
@@ -190,17 +175,26 @@ All commands print JSON to stdout. Successful results can include:
 - `images`
 - `prompt`
 - `cost_mill`
+- `requestSummary`
 - `errorCode`, `errorMessage`
+
+User-facing delivery requirement:
+
+- If image URLs are available, return at least one user-visible image link (for example `[Image](https://...)`) or inline rendering when supported. If multiple images are generated, render all of them using markdown image syntax consecutively.
+- Alongside image output, include key parameters when available: `tool`, `model`, `aspect_ratio`, `image_number`, `resolution`.
+- Do not use `taskId` as the sole deliverable unless the user explicitly requested task creation without waiting.
+- If timeout is reached before completion, return the `taskId` to the user and ask if they want you to check the status again. Do NOT show the raw node status command to the user; use it internally.
 
 ## Definition of done
 
 The task is done when:
 
 - local validation passes without CLI-side errors,
-- `submit` returns a valid task ID or batch ID,
+- `wait` returns final processed images for async tools,
 - or `wait` reaches a terminal result with at least one processed image URL,
 - or `image-to-prompt` returns a prompt string successfully,
 - or `status` returns a clear in-progress or terminal state,
+- or `wait` hits timeout and returns `taskId` plus a follow-up status command,
 - and the output makes it explicit whether image URLs or prompt text are present.
 
 ## Constraints

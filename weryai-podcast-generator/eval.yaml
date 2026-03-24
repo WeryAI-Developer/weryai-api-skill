@@ -12,6 +12,9 @@ trigger_tests:
   - id: implicit-full-podcast
     should_trigger: true
     prompt: "Generate a short English two-speaker podcast about AI in healthcare and wait until the audio is ready."
+  - id: implicit-full-podcast-timeout
+    should_trigger: true
+    prompt: "Generate an English podcast but if it takes longer than 30 minutes, gracefully time out."
   - id: explicit-text-only
     should_trigger: true
     prompt: "Submit podcast text generation for this topic and stop after creating the task."
@@ -37,6 +40,6 @@ outcome_tests:
     type: llm_rubric
     rubric: |
       Scope fidelity (0-0.25): Does the skill stay focused on WeryAI podcast generation rather than generic chat or music-only generation?
-      Workflow clarity (0-0.25): Does it clearly explain speaker lookup, text generation, audio generation, and the preferred wait flow?
+      Workflow clarity (0-0.25): Does it clearly explain speaker lookup, text generation, audio generation, and the preferred bounded wait flow?
       Constraint honesty (0-0.25): Does it clearly state cost, explicit speaker requirements, and the debate-mode exactly-two-speakers rule?
-      API fidelity (0-0.25): Are the documented fields and polling rules faithful to the WeryAI podcast APIs, especially the text -> audio lifecycle and content_status handling?
+      API fidelity & delivery (0-0.25): Are the documented fields faithful to the WeryAI podcast APIs, and does it enforce user-visible audio delivery, request parameter summary, and timeout fallbacks that offer internal status checks without raw commands?

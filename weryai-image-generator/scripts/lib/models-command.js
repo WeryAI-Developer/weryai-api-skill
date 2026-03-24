@@ -1,1 +1,1 @@
-export { execute, default } from '../vendor/weryai-image/models-command.js';
+export { execute, default } from '../../../../core/weryai-image/models-command.js';

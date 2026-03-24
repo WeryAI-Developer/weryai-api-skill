@@ -1,1 +1,1 @@
-export { execute } from '../vendor/weryai-music/submit.js';
+export { execute } from '../../../core/weryai-music/submit.js';

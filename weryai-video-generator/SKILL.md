@@ -1,17 +1,17 @@
 ---
 name: weryai-video-generator
-description: Generate WeryAI videos from text, images, storyboard frames, or first-frame and last-frame guidance. Use when you need text-to-video, image-to-video, video from image, storyboard-to-video, first-frame to last-frame transition video, model switching, dry-run payload previews, or WeryAI video task status checks.
+description: "Generate and transform WeryAI videos from text, images, storyboard frames, or first-frame and last-frame guidance. Use when the user needs text-to-video, image-to-video, bounded wait polling to final video output, video status checks, storyboard-to-video, first-frame to last-frame transitions, model switching, and dry-run payload previews."
 metadata: { "openclaw": { "emoji": "🎬", "primaryEnv": "WERYAI_API_KEY", "paid": true, "network_required": true, "requires": { "env": ["WERYAI_API_KEY"], "bins": ["node"], "node": ">=18" } } }
 ---
 
 # WeryAI Video Generator
 
-Generate WeryAI videos with the official base skill for text-to-video, image-to-video, video from image, storyboard-to-video, and first-frame/last-frame transition workflows. It defaults to **Seedance 2.0** (`SEEDANCE_2_0`) with `5s`, `720p`, `9:16`, and `generate_audio=true` on audio-capable models, while still allowing custom models and parameters.
+Generate WeryAI videos with the official base skill for text-to-video, image-to-video, video from image, storyboard-to-video, and first-frame/last-frame transition workflows. In agent environments, default to result-first execution: submit and poll until playable videos are ready or timeout is reached. Use bounded wait (short tasks: 10 minutes, long tasks: 30 minutes) and avoid unbounded polling loops.
 
 ## Example Prompts
 
-- `Make a video from this prompt and show me the final video URL.`
-- `Turn this image into a video with subtle motion and keep the subject consistent.`
+- `Generate a WeryAI text-to-video clip and return the final playable video if it is ready within timeout.`
+- `Turn this image into a video with subtle motion and wait for final output with bounded polling.`
 - `Generate a transition video from this first frame to this last frame.`
 - `Turn these storyboard frames into one coherent product reveal video.`
 - `Check which WeryAI video model supports 10 seconds, 16:9, and audio before submitting.`
@@ -48,8 +48,8 @@ export WERYAI_API_KEY="your_api_key_here"
 Use one safe check before the first paid run:
 
 ```sh
-node scripts/models-video.js --mode text_to_video
-node scripts/wait-video.js --json '{"prompt":"A glowing koi swims through ink clouds","duration":5}' --dry-run
+node {baseDir}/scripts/models-video.js --mode text_to_video
+node {baseDir}/scripts/wait-video.js --json '{"prompt":"A glowing koi swims through ink clouds","duration":5}' --dry-run
 ```
 
 - `models-video.js` confirms that the key is configured and the models endpoint is reachable.
@@ -103,6 +103,7 @@ Guide the user progressively instead of explaining every parameter up front.
 
 Use short operator-style guidance like this:
 
+- General help: When the user asks "how to use this skill", DO NOT paste raw shell commands. Instead, explain the capabilities in natural language and give 2-3 prompt examples (e.g., "You can ask me to animate a portrait image...").
 - Default run:
   `I can start with the default setup: Seedance 2.0 (Seedance 2.0), 5s, 720p, 9:16, audio on (for audio-capable models). If you want, I can also switch the model or adjust the duration, aspect ratio, resolution, or audio before submission.`
 - Model switching:
@@ -165,7 +166,7 @@ Wait for confirmation or requested edits before running a paid submission.
 
 ## Intent Routing
 
-Use two-stage execution as the default path so users can see submission success/failure first, then polling progress.
+Use result-first execution as the default path so users receive final playable output whenever possible.
 
 - If the user provides only `prompt`, route to text-to-video.
 - If the user provides `image`, route to image-to-video.
@@ -173,48 +174,18 @@ Use two-stage execution as the default path so users can see submission success/
 - If the user provides `images`, route to multi-image-to-video.
 - If multi-image support is unavailable for the chosen model, the runtime may downgrade to image-to-video with the first image only.
 - Default run path:
-  1. submit with `submit-*` and surface `taskId`/`batchId`.
-  2. poll existing task with `status-video.js`.
-- Keep `wait-video.js` as an optional one-shot fallback.
+  1. run `wait-video.js` (submit + bounded polling) and return final video when ready.
+  2. if timeout is reached, return `taskId`/`batchId` plus follow-up status command.
+- Use `submit-*` only when the user explicitly asks to create a task without waiting.
 
 ## Preferred Commands
 
 ```sh
-# Default: submit and wait for final video URLs
-node scripts/wait-video.js \
-  --json '{"prompt":"A neon city flythrough at night","duration":5}'
+# Default bounded wait (result-first)
+node {baseDir}/scripts/wait-video.js --json '{"prompt":"A neon city flythrough at night","duration":5}'
 
-# Animate one image
-node scripts/wait-video.js \
-  --json '{"prompt":"Animate this portrait with subtle hair and fabric motion","image":"https://example.com/input.png","duration":5}'
-
-# First frame + last frame guided generation
-node scripts/wait-video.js \
-  --json '{"prompt":"Start on the first frame and transition naturally to the last frame","first_frame":"https://example.com/start.png","last_frame":"https://example.com/end.png","duration":5}'
-
-# Compatibility alias for end-frame workflows
-node scripts/wait-video.js \
-  --json '{"prompt":"Transition from the start image to the end image","image":"https://example.com/start.png","last_image":"https://example.com/end.png","duration":5}'
-
-# Multi-image storyboard generation
-node scripts/wait-video.js \
-  --json '{"prompt":"Turn these storyboard frames into one coherent reveal shot","images":["https://example.com/1.png","https://example.com/2.png","https://example.com/3.png"],"duration":5}'
-
-# Dry-run preview without spending credits
-node scripts/wait-video.js \
-  --json '{"prompt":"A paper crane unfolds into a real bird","duration":5}' \
-  --dry-run
-
-# Submit without waiting
-node scripts/submit-text-video.js \
-  --json '{"prompt":"A drone shot over snowy mountains","duration":5}'
-
-# Inspect models, poll status, or check balance
-node scripts/models-video.js --mode text_to_video
-node scripts/models-video.js --mode image_to_video
-node scripts/models-video.js --mode multi_image_to_video
-node scripts/status-video.js --task-id <task-id>
-node scripts/balance-video.js
+# Poll an existing task
+node {baseDir}/scripts/status-video.js --task-id <task-id>
 ```
 
 ## Workflow
@@ -224,16 +195,17 @@ node scripts/balance-video.js
 3. Apply defaults: **Seedance 2.0** (`SEEDANCE_2_0`), `5s`, `720p`, `9:16`, and `generate_audio=true` for audio-capable models, unless the user asks otherwise.
 4. If the user wants a custom model or non-default parameters, run `models-video.js` first when support is uncertain.
 5. Use `--dry-run` when you need to preview the final payload before a paid submission.
-6. Default to two-stage execution:
-   - Stage 1: `submit-*` and report `taskId` / `batchId` with explicit submit success or failure.
-   - Stage 2: `status-video.js` polling for the existing task until terminal state.
-7. Use `wait-video.js` only when the user explicitly wants one-shot submit+poll in one command.
+6. Default to bounded wait execution:
+   - Stage 1: run `wait-video.js` (submit + polling) for generation requests.
+   - Stage 2: return playable video URLs when ready within timeout.
+   - Stage 3: on timeout, return the `taskId` to the user and ask if they want you to check the status again. Do NOT show the raw node status command to the user; use it internally.
+7. Use `submit-*` only when the user explicitly asks for task creation without waiting.
 8. Use `status-video.js` to re-check an existing task or batch safely.
 
 ## Poll Timeout Classes
 
-- `short` task class: `text_to_video`, default timeout `5` minutes (`300000ms`).
-- `long` task class: `image_to_video`, `multi_image_to_video`, `almighty_reference_to_video`, default timeout `20` minutes (`1200000ms`).
+- `short` task class: `text_to_video`, default timeout `10` minutes (`600000ms`).
+- `long` task class: `image_to_video`, `multi_image_to_video`, `almighty_reference_to_video`, default timeout `30` minutes (`1800000ms`).
 - `auto` task class (default) maps from the effective submission mode.
 - `WERYAI_POLL_TIMEOUT_MS` remains the highest-priority explicit override for compatibility.
 - Optional environment overrides:
@@ -256,8 +228,15 @@ All commands print JSON to stdout. Successful results can include:
 - `taskId`, `taskIds`, `batchId`
 - `taskStatus`
 - `videos`
+- `requestSummary`
 - `balance`
 - `errorCode`, `errorMessage`
+
+User-facing delivery requirement:
+
+- If video URLs are available, return at least one playable Markdown link (for example `[Video](https://...)`). If multiple videos are generated, render all of them using markdown links consecutively.
+- Alongside video output, include key generation parameters when available: `model`, `duration`, `aspect_ratio`, `resolution`, `generate_audio`.
+- If timeout is reached, return the `taskId` to the user and ask if they want you to check the status again. Do NOT show the raw node status command to the user; use it internally.
 
 See [references/error-codes.md](references/error-codes.md) for common failure classes and recovery hints.
 
@@ -266,9 +245,8 @@ See [references/error-codes.md](references/error-codes.md) for common failure cl
 The task is done when:
 
 - local validation passes without CLI-side errors,
-- Stage 1 `submit-*` returns a valid task ID or batch ID and clearly reports submission success/failure,
-- Stage 2 `status-video.js` reaches terminal state with at least one playable video URL or returns a clear failure/timeout result,
-- or `wait-video.js` reaches a terminal result with at least one playable video URL (one-shot fallback),
+- `wait-video.js` reaches terminal state with at least one playable video URL,
+- or bounded wait reaches timeout and returns the `taskId` plus an offer to check status again later,
 - or `status-video.js` returns a clear in-progress or terminal state,
 - and the output makes it explicit whether video URLs are present.
 
@@ -277,6 +255,7 @@ The task is done when:
 - Do not assume every model supports every parameter.
 - Do not use local file paths for reference images.
 - Do not re-run `submit` or `wait` casually because each run can create a new paid task.
+- Do not default to `wait-video.js` in agent environments for long-running generations.
 - Do not broaden this skill into general video editing outside the documented WeryAI API surface.
 
 ## Re-run Behavior

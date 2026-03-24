@@ -1,1 +1,1 @@
-export * from '../vendor/weryai-video/models.js';
+export * from '../../../../../core/weryai-video/models.js';

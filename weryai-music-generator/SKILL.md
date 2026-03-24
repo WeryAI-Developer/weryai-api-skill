@@ -1,19 +1,19 @@
 ---
 name: weryai-music-generator
-description: Generate WeryAI music, vocal songs, or instrumental tracks through the WeryAI music API. Use when you need music generation, song generation, instrumental generation, lyrics-aware vocal songs, reference-audio guided music, dry-run payload previews, music task status polling, or balance checks.
+description: "Generate WeryAI music, vocal songs, or instrumental tracks through the WeryAI music API. Use when the user needs music generation, song generation, instrumental generation, async music task submission, music task status polling, lyrics-aware vocal songs, reference-audio guided music, dry-run payload previews, balance checks, or one-shot wait only when explicitly requested."
 metadata: { "openclaw": { "emoji": "🎵", "primaryEnv": "WERYAI_API_KEY", "paid": true, "network_required": true, "requires": { "env": ["WERYAI_API_KEY"], "bins": ["node"], "node": ">=18" } } }
 ---
 
 # WeryAI Music Generator
 
-Generate WeryAI music with the official base skill for vocal-song and music-only workflows. This API is mode-driven rather than model-driven, so the main choice is whether the user wants a `VOCAL_SONG` or `ONLY_MUSIC` result.
+Generate WeryAI music with the official base skill for vocal-song and music-only workflows. In agent environments, default to an audio-first flow: use `wait-music.js` to submit and poll until final audio URLs are ready, keeping the wait bounded (10 minutes ceiling). Use `submit-music.js` plus asynchronous status polling only if the user explicitly asks for async behavior or a task ID. This API is mode-driven rather than model-driven, so the main choice is whether the user wants a `VOCAL_SONG` or `ONLY_MUSIC` result.
 
 ## Example Prompts
 
-- `Generate an instrumental ambient track and show me the final audio URL.`
-- `Make a vocal pop song with warm female vocals and custom lyrics.`
+- `Submit an instrumental generation task and keep checking until you can show me the final audio.`
+- `Make a vocal pop song with warm female vocals and custom lyrics, and give me the audio links.`
 - `Turn this style brief into a piano-only meditation track and preview the request body first.`
-- `Generate a song from this reference audio URL and tell me when the audio, lyrics, and cover are ready.`
+- `Generate a song from this reference audio URL, but use async submit plus status polling instead of waiting in one command.`
 - `Check the status of my WeryAI music generation task and tell me whether the results are ready.`
 
 ## Quick Summary
@@ -22,7 +22,7 @@ Generate WeryAI music with the official base skill for vocal-song and music-only
 - Main modes: `ONLY_MUSIC`, `VOCAL_SONG`
 - Default mode: `VOCAL_SONG`
 - Default options: `genre=none`, `emotion=none`, `instrument=none`, `timbre=male`
-- Main trust signals: dry-run support, paid-run warning, explicit mode rules, public URL validation for `reference_audio`
+- Main trust signals: dry-run support, paid-run warning, explicit mode rules, media-source validation with auto upload for local `reference_audio`
 
 ## Authentication and first-time setup
 
@@ -61,7 +61,8 @@ node {baseDir}/scripts/wait-music.js --json '{"type":"VOCAL_SONG","description":
 
 - `WERYAI_API_KEY` must be set before paid runs.
 - Node.js `>=18` is required because the runtime uses built-in `fetch`.
-- `reference_audio` and `webhook_url` must be public `http` or `https` URLs. Use a real reference audio URL, not a local file path.
+- `reference_audio` accepts `http/https` URLs or local/file sources. Local/non-http(s) sources are uploaded first via `/v1/generation/upload-file`.
+- `webhook_url` must be a public `http` or `https` URL.
 - Real `submit` and `wait` runs consume WeryAI credits.
 
 ## Security And API Hosts
@@ -169,6 +170,7 @@ Guide the user progressively instead of asking for every music field up front.
 
 Use short operator-style guidance like this:
 
+- General help: When the user asks "how to use this skill", DO NOT paste raw shell commands. Instead, explain the capabilities in natural language and give 2-3 prompt examples.
 - Default run:
   `I can start with the default setup: vocal-song generation, male timbre, no fixed genre/emotion/instrument tags. If you want pure instrumental music, a different timbre, or specific tags, I can switch that before submission.`
 - Vocal switch:
@@ -220,44 +222,22 @@ Wait for confirmation or requested edits before running a paid submission.
 
 ## Intent Routing
 
-Use `wait-music.js` as the default one-shot entry point when the user wants final audio URLs.
+Use `wait-music.js` as the default path in agent environments to deliver final audio results in the same turn.
 
 - If the request is instrumental or generic background music, route to `ONLY_MUSIC`.
 - If the request is for a song, vocals, lyrics, singer gender, or timbre, route to `VOCAL_SONG`.
+- If the user explicitly asks for asynchronous behavior or just a task ID, use `submit-music.js`.
 - If the user already has `taskId`, use `status-music.js` instead of creating a new task.
 - If the user wants to check account readiness first, use `balance-music.js`.
 
 ## Preferred Commands
 
 ```sh
-# Default: submit and wait for final music URLs
-node {baseDir}/scripts/wait-music.js \
-  --json '{"description":"A calm ambient piano track"}'
+# Default audio-first flow
+node {baseDir}/scripts/wait-music.js --json '{"type":"ONLY_MUSIC","description":"A calm piano piece"}'
 
-# Vocal song
-node {baseDir}/scripts/wait-music.js \
-  --json '{"type":"VOCAL_SONG","description":"A warm pop song","gender":"f","styles":{"POP":"pop","WARM":"warm"}}'
-
-# Instrumental music
-node {baseDir}/scripts/wait-music.js \
-  --json '{"type":"ONLY_MUSIC","styles":{"CLASSIC":"classical","PIANO":"piano"}}'
-
-# Structured option inputs
-node {baseDir}/scripts/wait-music.js \
-  --json '{"description":"A bright pop single","genre":"POP","emotion":"HAPPY","instrument":"PIANO","timbre":"female"}'
-
-# Dry-run preview without spending credits
-node {baseDir}/scripts/submit-music.js \
-  --json '{"type":"ONLY_MUSIC","description":"A calm piano piece"}' \
-  --dry-run
-
-# Submit without waiting
-node {baseDir}/scripts/submit-music.js \
-  --json '{"type":"VOCAL_SONG","description":"An energetic rock anthem","styles":{"ROCK":"rock","EXCITED":"excited"}}'
-
-# Query task status or remaining balance
+# Query task status
 node {baseDir}/scripts/status-music.js --task-id <task-id>
-node {baseDir}/scripts/balance-music.js
 ```
 
 ## Workflow
@@ -266,9 +246,11 @@ node {baseDir}/scripts/balance-music.js
 2. Build the request with at least one of `description` or `styles`.
 3. Normalize `genre`, `emotion`, `instrument`, and `timbre` into valid API fields when the user supplies structured options.
 4. If the request includes `reference_audio`, also provide `audio_name`.
-5. Use `submit --dry-run` when you need to verify the payload before spending credits.
-6. Use `submit` if the user only wants task creation, or `wait` if they want the final result in one pass.
-7. Use `status` to re-check an existing task without creating a new paid task.
+5. Use `submit --dry-run` or `wait --dry-run` when you need to verify the payload before spending credits.
+6. Default to an audio-first execution:
+   - Run `wait-music.js` to submit the task and poll status until final audio URLs are ready or the maximum timeout of 10 minutes (600 seconds) is reached.
+7. Use `submit-music.js` only when the user explicitly wants a task ID or async behavior without waiting.
+8. Use `status-music.js` to re-check an existing task without creating a new paid task.
 
 ## Input Rules
 
@@ -289,17 +271,26 @@ All commands print JSON to stdout. Successful result objects can include:
 - `lyrics`
 - `coverUrl`
 - `balance`
+- `requestSummary`
 - `errorCode` and `errorMessage`
 
 See [references/error-codes.md](references/error-codes.md) for the common error classes and recovery hints.
+
+## User-facing delivery requirement
+
+- Always render the `audios` URLs directly to the user as clickable Markdown links. Do not just output the `taskId`.
+- If multiple audio tracks are generated, render all of them using markdown links consecutively.
+- Include a brief summary of the generation parameters used (e.g. from `requestSummary` or your initial payload).
+- If timeout is reached before completion, return the `taskId` to the user and ask if they want you to check the status again. Do NOT show the raw node status command to the user; use it internally.
 
 ## Definition Of Done
 
 The task is done when:
 
 - the request is validated locally without CLI-side errors,
-- the API returns a task ID for `submit`,
-- or `wait` reaches a terminal result with at least one audio URL,
+- `wait` reaches a terminal result and returns user-visible audio URLs,
+- or `wait` reaches timeout and returns the `taskId` plus an offer to check status again later,
+- or `submit` (if explicitly requested) returns a task ID,
 - or `status` returns a clear terminal or in-progress state for the target task,
 - and the response tells the user whether lyrics and cover art are present.
 
@@ -308,6 +299,7 @@ The task is done when:
 - Do not pretend this music API supports dynamic model discovery; it is mode-driven and documentation-based.
 - Do not use local file paths for `reference_audio`.
 - Do not re-run `submit` or `wait` casually, because each re-run creates a new paid task.
+- Do not default to `wait-music.js` in agent environments for long-running generations.
 - Do not broaden this skill into general audio editing, DAW automation, or file mastering workflows.
 
 ## Re-run Behavior

@@ -1,1 +1,1 @@
-export * from '../vendor/weryai-core/errors.js';
+export * from '../../../../../core/weryai-core/errors.js';

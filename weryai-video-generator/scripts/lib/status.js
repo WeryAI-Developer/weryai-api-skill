@@ -1,4 +1,4 @@
-import { executeStatus } from '../vendor/weryai-core/status.js';
+import { executeStatus } from '../../../../../core/weryai-core/status.js';
 
 export function execute(input, ctx) {
   return executeStatus(input, ctx, {

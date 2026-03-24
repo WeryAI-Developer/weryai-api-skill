@@ -36,4 +36,7 @@ outcome_tests:
       - explain missing required parameters tool by tool,
       - apply defaults only where the API supports them,
       - align API key guidance with the repository's other WeryAI skills,
+      - include user-visible video delivery and key parameter summary when available,
+      - default async tools to bounded wait with a 30-minute timeout ceiling,
+      - return timeout fallbacks with task ID and offer to check status again (without showing raw command to user),
       - support safe dry-run previews before paid execution.

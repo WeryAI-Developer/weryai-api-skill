@@ -8,16 +8,28 @@ skill: weryai-image-generator
 trigger_tests:
   - id: explicit-text-to-image
     should_trigger: true
-    prompt: "Use the weryai-image-generator skill to submit a WeryAI text-to-image task with the default WeryAI Image 2.0 model and return the taskId first."
+    prompt: "Use the weryai-image-generator skill to generate a WeryAI text-to-image result with the default WeryAI Image 2.0 model and show me the image when it is ready."
   - id: explicit-image-to-image
     should_trigger: true
-    prompt: "Use WeryAI to restyle this reference image URL with image-to-image generation, submit first, and poll task status instead of waiting in one command."
+    prompt: "Use WeryAI to restyle this reference image URL with image-to-image generation and show me the final image."
   - id: implicit-models
     should_trigger: true
     prompt: "Check which WeryAI image models support 9:16 and 4 output images before generating the image."
   - id: implicit-status
     should_trigger: true
-    prompt: "Check my WeryAI image generation task status and tell me whether the images are ready."
+    prompt: "Check my WeryAI image generation task status once and tell me whether the images are ready."
+  - id: explicit-bounded-polling
+    should_trigger: true
+    prompt: "Submit this image task, poll until the final image is ready, and stop with task ID if the 5-minute timeout is reached."
+  - id: explicit-wait
+    should_trigger: true
+    prompt: "Generate this image and wait for the final result in one blocking turn."
+  - id: explicit-task-id-first
+    should_trigger: true
+    prompt: "Submit a WeryAI image generation task and give me the task ID first so I can check it later."
+  - id: negative-unbounded-recheck-loop
+    should_trigger: false
+    prompt: "After submit, keep polling forever without any timeout guard."
   - id: negative-non-image
     should_trigger: false
     prompt: "Write a blog post about visual design trends without calling any generation API."
@@ -44,7 +56,7 @@ outcome_tests:
   - id: skill-doc-quality
     type: llm_rubric
     rubric: |
-      Trigger coverage (0-0.25): Does the skill clearly cover text-to-image, image-to-image, model lookup, and task polling?
-      Workflow clarity (0-0.25): Can a user understand that async submit plus status polling is the default in agent environments, while wait is only for explicit one-shot requests, including the default WeryAI Image 2.0 behavior?
+      Trigger coverage (0-0.25): Does the skill clearly cover text-to-image, image-to-image, model lookup, bounded default polling, explicit wait, and final image delivery?
+      Workflow clarity (0-0.25): Can a user understand that the default goal is to show the final image via bounded polling, while timeout fallback and task IDs are explicit fallback outputs rather than the endpoint?
       Constraint honesty (0-0.25): Does the skill clearly state cost, idempotency, and reference-image constraints?
       API fidelity (0-0.25): Are the documented fields and model-specific parameter rules faithful to the WeryAI image API, including default image count and aspect ratio behavior?

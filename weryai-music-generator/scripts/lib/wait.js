@@ -1,8 +1,9 @@
 import { createClient } from './client.js';
 import { buildPayload, validateSubmit } from './validators.js';
 import { isApiSuccess, formatApiError, formatNetworkError } from './errors.js';
-import { normalizeMusicInput } from '../vendor/weryai-music/normalize-input.js';
-import { pollSingleTask } from '../vendor/weryai-core/wait.js';
+import { normalizeMusicInput } from '../../../../core/weryai-music/normalize-input.js';
+import { isRemoteUrl, resolvePublicUrlFromSource } from '../../../../core/weryai-core/upload.js';
+import { pollSingleTask } from '../../../../core/weryai-core/wait.js';
 
 export async function execute(input, ctx) {
   const normalizedInput = normalizeMusicInput(input);
@@ -17,6 +18,7 @@ export async function execute(input, ctx) {
   }
 
   const body = buildPayload(normalizedInput);
+  const uploadPreview = collectReferenceAudioUploadPreview(body);
 
   if (ctx.dryRun) {
     return {
@@ -25,6 +27,22 @@ export async function execute(input, ctx) {
       dryRun: true,
       requestBody: body,
       requestUrl: `${ctx.baseUrl}/v1/generation/music/generate`,
+      uploadPreview,
+      notes: uploadPreview.length > 0
+        ? 'dry-run does not upload local files. Local sources in uploadPreview will be uploaded in a real run via /v1/generation/upload-file.'
+        : null,
+    };
+  }
+
+  let resolvedBody = body;
+  try {
+    resolvedBody = await resolveReferenceAudioUpload(ctx, body);
+  } catch (err) {
+    return {
+      ok: false,
+      phase: 'failed',
+      errorCode: 'UPLOAD_FAILED',
+      errorMessage: err?.message ?? String(err),
     };
   }
 
@@ -32,7 +50,7 @@ export async function execute(input, ctx) {
 
   let submitRes;
   try {
-    submitRes = await client.post('/v1/generation/music/generate', body);
+    submitRes = await client.post('/v1/generation/music/generate', resolvedBody);
   } catch (err) {
     return formatNetworkError(err);
   }
@@ -54,11 +72,41 @@ export async function execute(input, ctx) {
     };
   }
 
-  return pollSingleTask(client, {
+  const pollResult = await pollSingleTask(client, {
     taskId,
     taskIds,
     ctx,
+    pollProfile: 'slow',
     outputKey: 'audios',
     outputLabel: 'audio',
   });
+
+  return {
+    ...pollResult,
+    requestSummary: buildRequestSummary(resolvedBody),
+  };
+}
+
+function buildRequestSummary(body) {
+  return {
+    type: body?.type ?? null,
+    description: body?.description ?? null,
+    gender: body?.gender ?? null,
+    styles: body?.styles ?? null,
+  };
+}
+
+function collectReferenceAudioUploadPreview(body) {
+  if (typeof body.reference_audio === 'string' && body.reference_audio.trim() && !isRemoteUrl(body.reference_audio)) {
+    return [{ field: 'reference_audio', source: body.reference_audio, kind: 'audio' }];
+  }
+  return [];
+}
+
+async function resolveReferenceAudioUpload(ctx, body) {
+  const out = { ...body };
+  if (typeof out.reference_audio === 'string' && out.reference_audio.trim()) {
+    out.reference_audio = await resolvePublicUrlFromSource(ctx, out.reference_audio);
+  }
+  return out;
 }

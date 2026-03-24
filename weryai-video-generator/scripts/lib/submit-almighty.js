@@ -1,1 +1,1 @@
-export { execute, default } from '../vendor/weryai-video/submit-almighty.js';
+export { execute, default } from '../../../../../core/weryai-video/submit-almighty.js';
