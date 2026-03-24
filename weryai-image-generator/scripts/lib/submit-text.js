@@ -1,1 +1,1 @@
-export { execute, default } from '../../../../core/weryai-image/submit-text.js';
+export { execute, default } from '../vendor/weryai-image/submit-text.js';

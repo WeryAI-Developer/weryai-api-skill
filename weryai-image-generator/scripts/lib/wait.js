@@ -2,10 +2,10 @@ import { createClient, log } from './client.js';
 import { formatApiError, formatNetworkError, isApiSuccess } from './errors.js';
 import { buildBody, fetchModelRegistry, lookupModel, validateWithModel } from './model-registry.js';
 import { DEFAULT_MODEL, FALLBACK_DEFAULTS } from './models.js';
-import { detectImageMode, normalizeImageInput } from '../../../../core/weryai-image/normalize-input.js';
-import { collectLocalUploadPreview, resolveImageUploadSources, validateLocalImageSources } from '../../../../core/weryai-image/upload.js';
+import { detectImageMode, normalizeImageInput } from '../vendor/weryai-image/normalize-input.js';
+import { collectLocalUploadPreview, resolveImageUploadSources, validateLocalImageSources } from '../vendor/weryai-image/upload.js';
 import { validateSubmitImage, validateSubmitText } from './validators.js';
-import { pollSubmittedTasks } from '../../../../core/weryai-core/wait.js';
+import { pollSubmittedTasks } from '../vendor/weryai-core/wait.js';
 
 export async function execute(input, ctx) {
   const normalizedInput = normalizeImageInput(input);

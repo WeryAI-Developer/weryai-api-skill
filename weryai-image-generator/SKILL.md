@@ -48,8 +48,8 @@ export WERYAI_API_KEY="your_api_key_here"
 Use one safe check before the first paid run:
 
 ```sh
-node {baseDir}/scripts/models-image.js --mode text_to_image
-node {baseDir}/scripts/wait-image.js --json '{"prompt":"A glowing paper lantern in mist","aspect_ratio":"9:16"}' --dry-run
+node scripts/models-image.js --mode text_to_image
+node scripts/wait-image.js --json '{"prompt":"A glowing paper lantern in mist","aspect_ratio":"9:16"}' --dry-run
 ```
 
 - `models-image.js` confirms that the key is configured and the models endpoint is reachable.
@@ -175,10 +175,10 @@ Use image-first submit plus bounded status polling as the default path in agent 
 
 ```sh
 # Default async submit
-node {baseDir}/scripts/submit-text-image.js --json '{"prompt":"A refined editorial portrait"}'
+node scripts/submit-text-image.js --json '{"prompt":"A refined editorial portrait"}'
 
 # Poll an existing task
-node {baseDir}/scripts/status-image.js --task-id <task-id>
+node scripts/status-image.js --task-id <task-id>
 ```
 
 ## Workflow

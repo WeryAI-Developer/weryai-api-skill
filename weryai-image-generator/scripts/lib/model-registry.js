@@ -1,1 +1,1 @@
-export * from '../../../../core/weryai-image/model-registry.js';
+export * from '../vendor/weryai-image/model-registry.js';
